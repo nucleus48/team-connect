@@ -5,11 +5,11 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
     "prettier": "^3.5.3",
+    "prettier-plugin-tailwindcss": "^0.6.13",
     "turbo": "^2.5.4",
     "typescript": "5.8.2"
   },
