@@ -3,6 +3,7 @@ import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { compare, hash } from "bcrypt";
 import { LogInDto, SignUpDto } from "./auth.dto";
+import { TokensEntity } from "./auth.entity";
 
 @Injectable()
 export class AuthService {
@@ -12,13 +13,13 @@ export class AuthService {
   ) {}
 
   async generateTokens(id: number, email: string) {
-    const accessToken = await this.jwtService.signAsync({
+    const access_token = await this.jwtService.signAsync({
       email,
       sub: id,
       role: "user",
     });
 
-    return { access_token: accessToken };
+    return new TokensEntity({ access_token });
   }
 
   async signup(data: SignUpDto) {

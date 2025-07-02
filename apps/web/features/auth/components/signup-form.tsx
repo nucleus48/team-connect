@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { signup } from "../lib/actions";
 import { SignUpFormData, SignUpFormSchema } from "../lib/schemas";
 
@@ -30,8 +31,10 @@ export default function SignUpForm() {
     defaultValues: { email: "", password: "" },
   });
 
-  const onSubmit = ({ email, password }: SignUpFormData) =>
-    signup(email, password);
+  const onSubmit = async ({ email, password }: SignUpFormData) => {
+    const data = await signup(email, password);
+    toast.error(data.message);
+  };
 
   return (
     <Form {...form}>

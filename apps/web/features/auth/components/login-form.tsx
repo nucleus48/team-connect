@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { login } from "../lib/actions";
 import { LogInFormData, LogInFormSchema } from "../lib/schemas";
 
@@ -30,8 +31,10 @@ export default function LogInForm() {
     defaultValues: { email: "", password: "" },
   });
 
-  const onSubmit = ({ email, password }: LogInFormData) =>
-    login(email, password);
+  const onSubmit = async ({ email, password }: LogInFormData) => {
+    const data = await login(email, password);
+    toast.error(data.message);
+  };
 
   return (
     <Form {...form}>
