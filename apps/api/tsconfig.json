@@ -16,6 +16,9 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
+    "paths": {
+      "@db/*": ["./src/db/*"]
+    },
     "noFallthroughCasesInSwitch": false
   }
 }
