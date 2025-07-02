@@ -17,7 +17,7 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "paths": {
-      "@db/*": ["./src/db/*"]
+      "@/*": ["./src/*"]
     },
     "noFallthroughCasesInSwitch": false
   }

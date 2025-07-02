@@ -1,5 +1,5 @@
-import { Database, DATABASE } from "@db/db.module";
-import { usersTable } from "@db/entities/users";
+import { Database, DATABASE } from "@/db/db.module";
+import { usersTable } from "@/db/entities/users";
 import { ConflictException, Inject, Injectable } from "@nestjs/common";
 
 @Injectable()
@@ -10,19 +10,19 @@ export class UsersService {
     const result = await this.getUserByEmail(email);
 
     if (result) {
-      throw new ConflictException("Email address already exits");
+      throw new ConflictException("Email address already exist");
     }
 
     const [user] = await this.db
       .insert(usersTable)
       .values({ email, password })
-      .returning({ uid: usersTable.id, email: usersTable.email });
+      .returning();
 
     return user;
   }
 
-  private async getUserByEmail(email: string) {
-    const user = await this.db.query.usersTable.findFirst({
+  async getUserByEmail(email: string) {
+    const user = await this.db.query.users.findFirst({
       where: (usersTable, { eq }) => eq(usersTable.email, email),
     });
 

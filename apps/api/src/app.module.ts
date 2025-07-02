@@ -1,7 +1,8 @@
-import { Module } from "@nestjs/common";
+import { Module, ValidationPipe } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AuthModule } from "./auth/auth.module";
 import { DBModule } from "./db/db.module";
+import { APP_PIPE } from "@nestjs/core";
 
 @Module({
   imports: [
@@ -12,6 +13,11 @@ import { DBModule } from "./db/db.module";
     AuthModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    {
+      provide: APP_PIPE,
+      useClass: ValidationPipe,
+    },
+  ],
 })
 export class AppModule {}

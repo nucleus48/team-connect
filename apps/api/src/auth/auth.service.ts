@@ -1,7 +1,8 @@
-import { Injectable } from "@nestjs/common";
+import { UsersService } from "@/users/users.service";
+import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import {hash} from "bcrypt";
-import { UsersService } from "src/users/users.service";
+import { compare, hash } from "bcrypt";
+import { LogInDto, SignUpDto } from "./auth.dto";
 
 @Injectable()
 export class AuthService {
@@ -10,14 +11,30 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async signup(email: string, password: string) {
-    const passwordHash = await hash(password, 10);
-    const user = await this.usersService.createUser(email, passwordHash);
+  async generateTokens(id: number, email: string) {
     const accessToken = await this.jwtService.signAsync({
-      sub: user.uid,
-      email: user.email,
+      email,
+      sub: id,
+      role: "user",
     });
 
-    return { accessToken };
+    return { access_token: accessToken };
+  }
+
+  async signup(data: SignUpDto) {
+    const passwordHash = await hash(data.password, 10);
+    const user = await this.usersService.createUser(data.email, passwordHash);
+    return this.generateTokens(user.id, user.email);
+  }
+
+  async login(data: LogInDto) {
+    const user = await this.usersService.getUserByEmail(data.email);
+    const isMatch = await compare(data.password, user?.password || "");
+
+    if (!user || !isMatch) {
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
+    return this.generateTokens(user.id, user.email);
   }
 }
