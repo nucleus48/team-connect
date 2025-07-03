@@ -1,6 +1,11 @@
 import { Database, DATABASE } from "@/db/db.module";
 import { usersTable } from "@/db/entities/users";
-import { ConflictException, Inject, Injectable } from "@nestjs/common";
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 
 @Injectable()
 export class UsersService {
@@ -23,8 +28,36 @@ export class UsersService {
 
   async getUserByEmail(email: string) {
     const user = await this.db.query.users.findFirst({
-      where: (usersTable, { eq }) => eq(usersTable.email, email),
+      where: (users, { eq }) => eq(users.email, email),
     });
+
+    return user;
+  }
+
+  async getUserByEmailOrThrow(email: string) {
+    const user = await this.getUserByEmail(email);
+
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    return user;
+  }
+
+  async getUserById(id: number) {
+    const user = await this.db.query.users.findFirst({
+      where: (users, { eq }) => eq(users.id, id),
+    });
+
+    return user;
+  }
+
+  async getUserByIdOrThrow(id: number) {
+    const user = await this.getUserById(id);
+
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
 
     return user;
   }
