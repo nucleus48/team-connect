@@ -1,55 +1,71 @@
 import {
   ConnectedSocket,
   MessageBody,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
   SubscribeMessage,
   WebSocketGateway,
 } from "@nestjs/websockets";
-import type { Socket } from "socket.io";
-import {
-  ConnectTransportDto,
-  CreateConsumerDto,
-  CreateProducerDto,
-} from "./media.dto";
+import { types } from "mediasoup";
 import { MediaService } from "./media.service";
+import { MediaSocket } from "./media.types";
 
-@WebSocketGateway()
-export class MediaGateway {
+@WebSocketGateway({ cors: true })
+export class MediaGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(private readonly mediaService: MediaService) {}
 
-  @SubscribeMessage("capabilities")
-  getRouterRtpCapabilities(
-    @MessageBody("routerId") routerId: string,
-    @ConnectedSocket() socket: Socket,
+  handleConnection(client: MediaSocket) {
+    return this.mediaService.handleConnection(client);
+  }
+
+  handleDisconnect(client: MediaSocket) {
+    return this.mediaService.handleDisconnection(client);
+  }
+
+  @SubscribeMessage("getRouterRtpCapabilities")
+  handleGetRouterRtpCapabilities(@ConnectedSocket() client: MediaSocket) {
+    return this.mediaService.getRouterRtpCapabilities(client);
+  }
+
+  @SubscribeMessage("createWebRtcTransport")
+  handleCreateWebRtcTransport(@ConnectedSocket() client: MediaSocket) {
+    return this.mediaService.createWebRtcTransport(client);
+  }
+
+  @SubscribeMessage("connectTransport")
+  handleConnectTransport(
+    @MessageBody("transportId") transportId: string,
+    @MessageBody("dtlsParameters") dtlsParameters: types.DtlsParameters,
   ) {
-    socket.data = routerId;
-    return this.mediaService.getRouterRtpCapabilities(routerId);
+    return this.mediaService.connectTransport(transportId, dtlsParameters);
   }
 
-  @SubscribeMessage("transport")
-  createWebRtcTransport(
-    @MessageBody("routerId") routerId: string,
-    @ConnectedSocket() socket: Socket,
+  @SubscribeMessage("createProducer")
+  handleCreateProducer(
+    @ConnectedSocket() client: MediaSocket,
+    @MessageBody("appData") appData: types.AppData,
+    @MessageBody("kind") kind: types.MediaKind,
+    @MessageBody("rtpParameters") rtpParameters: types.RtpParameters,
   ) {
-    return this.mediaService.createWebRtcTransport(routerId, socket);
+    return this.mediaService.createProducer(
+      client,
+      appData.streamId as string,
+      appData.transportId as string,
+      kind,
+      rtpParameters,
+    );
   }
 
-  @SubscribeMessage("connect")
-  connectTransport(@MessageBody() data: ConnectTransportDto) {
-    return this.mediaService.connectTransport(data);
-  }
-
-  @SubscribeMessage("produce")
-  createProducer(@MessageBody() data: CreateProducerDto) {
-    return this.mediaService.createProducer(data);
-  }
-
-  @SubscribeMessage("consume")
-  createConsumer(@MessageBody() data: CreateConsumerDto) {
-    return this.mediaService.createConsumer(data);
-  }
-
-  @SubscribeMessage("disconnect")
-  handleDisconnect(@ConnectedSocket() socket: Socket) {
-    this.mediaService.closeTransport(socket.data as string, socket.id);
+  @SubscribeMessage("createConsumer")
+  handleCreateConsumer(
+    @MessageBody("transportId") transportId: string,
+    @MessageBody("producerId") producerId: string,
+    @MessageBody("rtpCapabilities") rtpCapabilities: types.RtpCapabilities,
+  ) {
+    return this.mediaService.createConsumer(
+      transportId,
+      producerId,
+      rtpCapabilities,
+    );
   }
 }

@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { APP_PIPE } from "@nestjs/core";
 import { AuthModule } from "./auth/auth.module";
 import { DBModule } from "./db/db.module";
+import { MediaModule } from "./media/media.module";
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { DBModule } from "./db/db.module";
     }),
     DBModule,
     AuthModule,
+    MediaModule,
   ],
   controllers: [],
   providers: [
