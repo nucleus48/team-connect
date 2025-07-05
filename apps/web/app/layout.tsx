@@ -1,12 +1,12 @@
 import { Toaster } from "@/components/ui/sonner";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+// import { Inter } from "next/font/google";
 import "./globals.css";
 
-const interSans = Inter({
-  variable: "--font-sans",
-  subsets: ["latin"],
-});
+// const interSans = Inter({
+//   variable: "--font-sans",
+//   subsets: ["latin"],
+// });
 
 export const metadata: Metadata = {
   title: {
@@ -22,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${interSans.variable} antialiased`}>
+      <body className={`antialiased`}>
         {children}
         <Toaster />
       </body>

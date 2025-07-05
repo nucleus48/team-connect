@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { createRoom } from "@/features/room/lib/actions";
 import { KeyboardIcon, VideoIcon } from "lucide-react";
 
 export default function Home() {
@@ -12,7 +13,7 @@ export default function Home() {
           downloads, no hassle, just share the code and start talking.
         </p>
         <form className="flex flex-wrap gap-4">
-          <Button autoFocus size={"lg"}>
+          <Button autoFocus size={"lg"} formAction={createRoom}>
             <VideoIcon className="size-5" />
             <span>New room</span>
           </Button>

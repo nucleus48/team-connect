@@ -1,21 +1,36 @@
 "use client";
 
 import { Device, types } from "mediasoup-client";
-import { createContext, use, useEffect, useState } from "react";
+import { createContext, use, useCallback, useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
 
 export type TransportProviderProps = React.PropsWithChildren<{
   routerId: string;
 }>;
 
+export type RemoteProducers = {
+  routerId: string;
+  streamId: string;
+  producers: string[];
+};
+
+export type RemoteProducer = {
+  producerId: string;
+  streamId: string;
+};
+
 export type TransportContextValue = {
   device?: Device;
   socket?: Socket;
   producerTransport?: types.Transport;
   consumerTransport?: types.Transport;
+  remoteProducers: RemoteProducers[];
+  removeRemoteProducers?: (streamId: string) => void;
 };
 
-const TransportContext = createContext<TransportContextValue>({});
+const TransportContext = createContext<TransportContextValue>({
+  remoteProducers: [],
+});
 
 export default function TransportProvider({
   children,
@@ -25,6 +40,13 @@ export default function TransportProvider({
   const [device, setDevice] = useState<Device>();
   const [producerTransport, setProducerTransport] = useState<types.Transport>();
   const [consumerTransport, setConsumerTransport] = useState<types.Transport>();
+  const [remoteProducers, setRemoteProducers] = useState<RemoteProducers[]>([]);
+
+  const removeRemoteProducers = useCallback((streamId: string) => {
+    setRemoteProducers((prev) =>
+      prev.filter((stream) => stream.streamId !== streamId),
+    );
+  }, []);
 
   useEffect(() => {
     const socket = io(`http://localhost:3030/?routerId=${routerId}`);
@@ -32,6 +54,7 @@ export default function TransportProvider({
 
     setSocket(socket);
     setDevice(device);
+    setRemoteProducers([]);
 
     let producerTransport: types.Transport;
     let consumerTransport: types.Transport;
@@ -42,39 +65,97 @@ export default function TransportProvider({
       );
     }
 
-    async function setup() {
-      const routerRtpCapabilities =
-        await socketRequest<types.RtpCapabilities>("capabilities");
-      await device.load({ routerRtpCapabilities });
-      const transportOptions =
-        await socketRequest<types.TransportOptions>("transport");
+    socket.on("join", (remoteProducers: RemoteProducers[]) => {
+      setRemoteProducers(remoteProducers);
+    });
 
-      producerTransport = device.createSendTransport(transportOptions);
-      consumerTransport = device.createRecvTransport(transportOptions);
+    socket.on("newStream", (remoteProducers: RemoteProducers) => {
+      setRemoteProducers((prev) => [...prev, remoteProducers]);
+    });
+
+    socket.on("removeStream", (remoteProducers: RemoteProducers) => {
+      setRemoteProducers((prev) =>
+        prev.filter((stream) => stream.streamId !== remoteProducers.streamId),
+      );
+    });
+
+    socket.on("newProducer", (remoteProducer: RemoteProducer) => {
+      setRemoteProducers((prev) =>
+        prev.map((producers) => {
+          if (producers.streamId == remoteProducer.streamId) {
+            return {
+              ...producers,
+              producers: Array.from(
+                new Set([...producers.producers, remoteProducer.producerId]),
+              ),
+            };
+          }
+
+          return producers;
+        }),
+      );
+    });
+
+    async function setup() {
+      const routerRtpCapabilities = await socketRequest<types.RtpCapabilities>(
+        "getRouterRtpCapabilities",
+      );
+
+      await device.load({ routerRtpCapabilities });
+
+      const producerTransportOptions =
+        await socketRequest<types.TransportOptions>("createWebRtcTransport");
+
+      const consumerTransportOptions =
+        await socketRequest<types.TransportOptions>("createWebRtcTransport");
+
+      producerTransport = device.createSendTransport(producerTransportOptions);
+      consumerTransport = device.createRecvTransport(consumerTransportOptions);
 
       setProducerTransport(producerTransport);
       setConsumerTransport(consumerTransport);
 
-      const handleConnection = async (
-        data: { dtlsParameters: types.DtlsParameters },
-        resolve: () => void,
-        reject: (error: Error) => void,
-      ) => {
-        try {
-          await socketRequest("connect-transport", data.dtlsParameters);
-          resolve();
-        } catch (error) {
-          reject(error as Error);
-        }
-      };
+      const handleConnection =
+        (transportId: string) =>
+        async (
+          { dtlsParameters }: { dtlsParameters: types.DtlsParameters },
+          resolve: () => void,
+          reject: (error: Error) => void,
+        ) => {
+          try {
+            await socketRequest("connectTransport", {
+              transportId,
+              dtlsParameters,
+            });
+            resolve();
+          } catch (error) {
+            reject(error as Error);
+          }
+        };
 
-      producerTransport.on("connect", handleConnection);
-      consumerTransport.on("connect", handleConnection);
+      producerTransport.on(
+        "connect",
+        handleConnection(producerTransportOptions.id),
+      );
+
+      consumerTransport.on(
+        "connect",
+        handleConnection(consumerTransportOptions.id),
+      );
 
       producerTransport.on("produce", async (data, resolve, reject) => {
         try {
-          const producerId = await socketRequest<string>("produce", data);
-          resolve({ id: producerId });
+          const producer = await socketRequest<{ id: string }>(
+            "createProducer",
+            {
+              ...data,
+              appData: {
+                ...data.appData,
+                transportId: producerTransportOptions.id,
+              },
+            },
+          );
+          resolve(producer);
         } catch (error) {
           reject(error as Error);
         }
@@ -92,7 +173,14 @@ export default function TransportProvider({
 
   return (
     <TransportContext
-      value={{ device, socket, producerTransport, consumerTransport }}
+      value={{
+        device,
+        socket,
+        producerTransport,
+        consumerTransport,
+        remoteProducers,
+        removeRemoteProducers,
+      }}
     >
       {children}
     </TransportContext>

@@ -13,7 +13,7 @@ export async function handleApiError<T>(res: Promise<T>) {
 
     if (error instanceof ResponseError) {
       const data = await error.response.json();
-      message = data.message as string;
+      message = data.message;
     }
 
     return { success: false, data: { message } } as const;
