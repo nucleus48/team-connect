@@ -1,8 +1,8 @@
 "use client";
 
+import { io, Socket } from "@/lib/socket";
 import { Device, types } from "mediasoup-client";
 import { createContext, use, useCallback, useEffect, useState } from "react";
-import { io, Socket } from "socket.io-client";
 
 export type TransportProviderProps = React.PropsWithChildren<{
   routerId: string;
@@ -59,12 +59,6 @@ export default function TransportProvider({
     let producerTransport: types.Transport;
     let consumerTransport: types.Transport;
 
-    function socketRequest<T>(event: string, data?: unknown) {
-      return new Promise<T>((res) =>
-        socket?.emit(event, data, (data: T) => res(data)),
-      );
-    }
-
     socket.on("join", (remoteProducers: RemoteProducers[]) => {
       setRemoteProducers(remoteProducers);
     });
@@ -97,17 +91,17 @@ export default function TransportProvider({
     });
 
     async function setup() {
-      const routerRtpCapabilities = await socketRequest<types.RtpCapabilities>(
+      const routerRtpCapabilities = await socket.request<types.RtpCapabilities>(
         "getRouterRtpCapabilities",
       );
 
       await device.load({ routerRtpCapabilities });
 
       const producerTransportOptions =
-        await socketRequest<types.TransportOptions>("createWebRtcTransport");
+        await socket.request<types.TransportOptions>("createWebRtcTransport");
 
       const consumerTransportOptions =
-        await socketRequest<types.TransportOptions>("createWebRtcTransport");
+        await socket.request<types.TransportOptions>("createWebRtcTransport");
 
       producerTransport = device.createSendTransport(producerTransportOptions);
       consumerTransport = device.createRecvTransport(consumerTransportOptions);
@@ -123,7 +117,7 @@ export default function TransportProvider({
           reject: (error: Error) => void,
         ) => {
           try {
-            await socketRequest("connectTransport", {
+            await socket.request("connectTransport", {
               transportId,
               dtlsParameters,
             });
@@ -145,7 +139,7 @@ export default function TransportProvider({
 
       producerTransport.on("produce", async (data, resolve, reject) => {
         try {
-          const producer = await socketRequest<{ id: string }>(
+          const producer = await socket.request<{ id: string }>(
             "createProducer",
             {
               ...data,
