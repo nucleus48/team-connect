@@ -2,20 +2,22 @@
 
 import { io, Socket } from "@/lib/socket";
 import { Device, types } from "mediasoup-client";
-import { createContext, use, useCallback, useEffect, useState } from "react";
+import { createContext, use, useEffect, useState } from "react";
 
 export type TransportProviderProps = React.PropsWithChildren<{
   routerId: string;
 }>;
 
-export type RemoteProducers = {
+export type RemoteStream = {
+  id: string;
   routerId: string;
-  streamId: string;
+  clientId: string;
+  transportId: string;
   producers: string[];
 };
 
 export type RemoteProducer = {
-  producerId: string;
+  id: string;
   streamId: string;
 };
 
@@ -24,12 +26,11 @@ export type TransportContextValue = {
   socket?: Socket;
   producerTransport?: types.Transport;
   consumerTransport?: types.Transport;
-  remoteProducers: RemoteProducers[];
-  removeRemoteProducers?: (streamId: string) => void;
+  remoteStreams: RemoteStream[];
 };
 
 const TransportContext = createContext<TransportContextValue>({
-  remoteProducers: [],
+  remoteStreams: [],
 });
 
 export default function TransportProvider({
@@ -40,13 +41,7 @@ export default function TransportProvider({
   const [device, setDevice] = useState<Device>();
   const [producerTransport, setProducerTransport] = useState<types.Transport>();
   const [consumerTransport, setConsumerTransport] = useState<types.Transport>();
-  const [remoteProducers, setRemoteProducers] = useState<RemoteProducers[]>([]);
-
-  const removeRemoteProducers = useCallback((streamId: string) => {
-    setRemoteProducers((prev) =>
-      prev.filter((stream) => stream.streamId !== streamId),
-    );
-  }, []);
+  const [remoteStreams, setRemoteStreams] = useState<RemoteStream[]>([]);
 
   useEffect(() => {
     const socket = io(`http://localhost:3030/?routerId=${routerId}`);
@@ -54,38 +49,50 @@ export default function TransportProvider({
 
     setSocket(socket);
     setDevice(device);
-    setRemoteProducers([]);
+    setRemoteStreams([]);
 
-    let producerTransport: types.Transport;
-    let consumerTransport: types.Transport;
-
-    socket.on("join", (remoteProducers: RemoteProducers[]) => {
-      setRemoteProducers(remoteProducers);
+    socket.on("join", (remoteStreams: RemoteStream[]) => {
+      setRemoteStreams(remoteStreams);
     });
 
-    socket.on("newStream", (remoteProducers: RemoteProducers) => {
-      setRemoteProducers((prev) => [...prev, remoteProducers]);
+    socket.on("newStream", (remoteStream: RemoteStream) => {
+      setRemoteStreams((remoteStreams) => [...remoteStreams, remoteStream]);
     });
 
-    socket.on("removeStream", (remoteProducers: RemoteProducers) => {
-      setRemoteProducers((prev) =>
-        prev.filter((stream) => stream.streamId !== remoteProducers.streamId),
+    socket.on("closeStream", (streamId: string) => {
+      setRemoteStreams((remoteStreams) =>
+        remoteStreams.filter((remoteStream) => remoteStream.id !== streamId),
       );
     });
 
     socket.on("newProducer", (remoteProducer: RemoteProducer) => {
-      setRemoteProducers((prev) =>
-        prev.map((producers) => {
-          if (producers.streamId == remoteProducer.streamId) {
+      setRemoteStreams((remoteStreams) =>
+        remoteStreams.map((remoteStream) => {
+          if (remoteStream.id == remoteProducer.streamId) {
             return {
-              ...producers,
-              producers: Array.from(
-                new Set([...producers.producers, remoteProducer.producerId]),
+              ...remoteStream,
+              producers: [...remoteStream.producers, remoteProducer.id],
+            };
+          }
+
+          return remoteStream;
+        }),
+      );
+    });
+
+    socket.on("closeProducer", (remoteProducer: RemoteProducer) => {
+      setRemoteStreams((remoteStreams) =>
+        remoteStreams.map((remoteStream) => {
+          if (remoteStream.id == remoteProducer.streamId) {
+            return {
+              ...remoteStream,
+              producers: remoteStream.producers.filter(
+                (producerId) => producerId !== remoteProducer.id,
               ),
             };
           }
 
-          return producers;
+          return remoteStream;
         }),
       );
     });
@@ -103,8 +110,13 @@ export default function TransportProvider({
       const consumerTransportOptions =
         await socket.request<types.TransportOptions>("createWebRtcTransport");
 
-      producerTransport = device.createSendTransport(producerTransportOptions);
-      consumerTransport = device.createRecvTransport(consumerTransportOptions);
+      const producerTransport = device.createSendTransport(
+        producerTransportOptions,
+      );
+
+      const consumerTransport = device.createRecvTransport(
+        consumerTransportOptions,
+      );
 
       setProducerTransport(producerTransport);
       setConsumerTransport(consumerTransport);
@@ -160,8 +172,6 @@ export default function TransportProvider({
 
     return () => {
       socket.disconnect();
-      producerTransport?.close();
-      consumerTransport?.close();
     };
   }, [routerId]);
 
@@ -172,8 +182,7 @@ export default function TransportProvider({
         socket,
         producerTransport,
         consumerTransport,
-        remoteProducers,
-        removeRemoteProducers,
+        remoteStreams,
       }}
     >
       {children}

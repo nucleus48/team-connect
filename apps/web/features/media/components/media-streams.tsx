@@ -1,29 +1,25 @@
 "use client";
 
-import { useEffect } from "react";
 import { useMedia } from "../providers/media-provider";
 import { useTransport } from "../providers/transport-provider";
-import LocalStream from "./local-stream";
+import DisplayStream from "./display-stream";
 import RemoteStream from "./remote-stream";
+import UserStream from "./user-stream";
 
 export default function MediaStreams() {
-  const { userStream, displayStreams, startUserStream } = useMedia();
-  const { remoteProducers } = useTransport();
-
-  useEffect(() => {
-    startUserStream?.({ audio: true, video: true });
-  }, []);
+  const { userStream, displayStreams } = useMedia();
+  const { remoteStreams } = useTransport();
 
   return (
     <div className="grid">
       {userStream && (
-        <LocalStream className="rotate-y-180" stream={userStream} />
+        <UserStream className="rotate-y-180" stream={userStream} />
       )}
       {displayStreams.map((displayStream) => (
-        <LocalStream key={displayStream.id} stream={displayStream} />
+        <DisplayStream key={displayStream.id} stream={displayStream} />
       ))}
-      {remoteProducers.map((remoteStream) => (
-        <RemoteStream key={remoteStream.streamId} remoteStream={remoteStream} />
+      {remoteStreams.map((remoteStream) => (
+        <RemoteStream key={remoteStream.id} remoteStream={remoteStream} />
       ))}
     </div>
   );

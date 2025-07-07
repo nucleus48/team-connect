@@ -8,9 +8,7 @@ export function io(...args: Parameters<typeof baseIo>) {
   const socket = baseIo(...args) as Socket;
 
   socket.request = (event, data) => {
-    return new Promise((resolve) =>
-      socket.emit(event, data, (data: never) => resolve(data)),
-    );
+    return new Promise((resolve) => socket.emit(event, data, resolve));
   };
 
   return socket;

@@ -1,4 +1,5 @@
 import MediaStreams from "@/features/media/components/media-streams";
+import ShareScreen from "@/features/media/components/share-screen";
 import MediaProvider from "@/features/media/providers/media-provider";
 import TransportProvider from "@/features/media/providers/transport-provider";
 
@@ -13,6 +14,7 @@ export default async function RoomPage({
     <MediaProvider>
       <TransportProvider routerId={roomId}>
         <MediaStreams />
+        <ShareScreen />
       </TransportProvider>
     </MediaProvider>
   );

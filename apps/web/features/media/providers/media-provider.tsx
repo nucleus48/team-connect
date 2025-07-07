@@ -42,6 +42,10 @@ export default function MediaProvider({ children }: React.PropsWithChildren) {
   }, []);
 
   useEffect(() => {
+    startUserStream({ audio: true, video: true });
+  }, [startUserStream]);
+
+  useEffect(() => {
     async function enumerateDevices() {
       const mediaDevices = await navigator.mediaDevices.enumerateDevices();
       setMediaDevices(mediaDevices);
