@@ -7,28 +7,28 @@ import {
   WebSocketGateway,
 } from "@nestjs/websockets";
 import { types } from "mediasoup";
+import { IMediaSocket } from "./media.interface";
 import { MediaService } from "./media.service";
-import { MediaSocket } from "./media.types";
 
 @WebSocketGateway({ cors: true })
 export class MediaGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(private readonly mediaService: MediaService) {}
 
-  handleConnection(client: MediaSocket) {
+  handleConnection(client: IMediaSocket) {
     return this.mediaService.handleConnection(client);
   }
 
-  handleDisconnect(client: MediaSocket) {
-    return this.mediaService.handleDisconnection(client);
+  handleDisconnect(client: IMediaSocket) {
+    return this.mediaService.handleDisconnect(client);
   }
 
   @SubscribeMessage("getRouterRtpCapabilities")
-  handleGetRouterRtpCapabilities(@ConnectedSocket() client: MediaSocket) {
+  handleGetRouterRtpCapabilities(@ConnectedSocket() client: IMediaSocket) {
     return this.mediaService.getRouterRtpCapabilities(client);
   }
 
   @SubscribeMessage("createWebRtcTransport")
-  handleCreateWebRtcTransport(@ConnectedSocket() client: MediaSocket) {
+  handleCreateWebRtcTransport(@ConnectedSocket() client: IMediaSocket) {
     return this.mediaService.createWebRtcTransport(client);
   }
 
@@ -42,18 +42,35 @@ export class MediaGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage("createProducer")
   handleCreateProducer(
-    @ConnectedSocket() client: MediaSocket,
+    @ConnectedSocket() client: IMediaSocket,
     @MessageBody("appData") appData: types.AppData,
     @MessageBody("kind") kind: types.MediaKind,
     @MessageBody("rtpParameters") rtpParameters: types.RtpParameters,
   ) {
-    return this.mediaService.createProducer(
+    return this.mediaService.produce(
       client,
-      appData.streamId as string,
       appData.transportId as string,
+      appData.streamId as string,
       kind,
       rtpParameters,
     );
+  }
+
+  @SubscribeMessage("closeProducer")
+  handleCloseProducer(
+    @ConnectedSocket() client: IMediaSocket,
+    @MessageBody("streamId") streamId: string,
+    @MessageBody("producerId") producerId: string,
+  ) {
+    return this.mediaService.closeProducer(client, streamId, producerId);
+  }
+
+  @SubscribeMessage("closeStream")
+  handleCloseStream(
+    @ConnectedSocket() client: IMediaSocket,
+    @MessageBody() streamId: string,
+  ) {
+    return this.mediaService.closeStream(client, streamId);
   }
 
   @SubscribeMessage("createConsumer")
@@ -62,10 +79,6 @@ export class MediaGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody("producerId") producerId: string,
     @MessageBody("rtpCapabilities") rtpCapabilities: types.RtpCapabilities,
   ) {
-    return this.mediaService.createConsumer(
-      transportId,
-      producerId,
-      rtpCapabilities,
-    );
+    return this.mediaService.consume(transportId, producerId, rtpCapabilities);
   }
 }

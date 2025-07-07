@@ -3,7 +3,7 @@ import { createWorker, types } from "mediasoup";
 import { cpus } from "os";
 
 @Injectable()
-export class WorkersService {
+export class MediaWorkers {
   private nextWorkerIdx = 0;
   private workers: types.Worker[] = [];
 
@@ -33,7 +33,7 @@ export class WorkersService {
     }
   }
 
-  getWorker() {
+  get worker() {
     const worker = this.workers[this.nextWorkerIdx++];
 
     if (this.nextWorkerIdx >= this.workers.length) {

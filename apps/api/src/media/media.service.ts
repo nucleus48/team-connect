@@ -1,131 +1,54 @@
-import { WorkersService } from "@/workers/workers.service";
 import { Injectable } from "@nestjs/common";
-import { WsException } from "@nestjs/websockets";
 import { types } from "mediasoup";
-import { MediaSocket, MediaStream } from "./media.types";
+import { IMediaSocket } from "./media.interface";
+import { MediaConsumers } from "./providers/media.consumers";
+import { MediaProducers } from "./providers/media.producers";
+import { MediaRouters } from "./providers/media.routers";
+import { MediaStreams } from "./providers/media.streams";
+import { MediaTransports } from "./providers/media.transports";
 
 @Injectable()
 export class MediaService {
-  private readonly routers: Map<string, types.Router> = new Map();
-  private readonly transports: Map<string, types.WebRtcTransport> = new Map();
-  private readonly mediaStreams: Map<string, MediaStream> = new Map();
-  private readonly clients: Map<string, Set<string>> = new Map();
+  private readonly clientTransports: Map<string, Set<string>> = new Map();
 
-  constructor(private readonly workersService: WorkersService) {}
+  constructor(
+    private readonly mediaRouters: MediaRouters,
+    private readonly mediaTransports: MediaTransports,
+    private readonly mediaStreams: MediaStreams,
+    private readonly mediaProducers: MediaProducers,
+    private readonly mediaConsumers: MediaConsumers,
+  ) {}
 
-  private async createRouter(routerId: string) {
-    const worker = this.workersService.getWorker();
-
-    const router = await worker.createRouter({
-      mediaCodecs: [
-        {
-          kind: "audio",
-          mimeType: "audio/opus",
-          clockRate: 48000,
-          channels: 2,
-        },
-        {
-          kind: "video",
-          mimeType: "video/VP8",
-          clockRate: 90000,
-          parameters: {
-            "x-google-start-bitrate": 1000,
-          },
-        },
-      ],
-    });
-
-    this.routers.set(routerId, router);
-
-    const handleClose = () => {
-      this.routers.delete(router.id);
-      router.close();
-    };
-
-    router.once("workerclose", handleClose);
-
-    setTimeout(handleClose, 24 * 60 * 60 * 1000);
-
-    return router;
-  }
-
-  private getTransport(transportId: string) {
-    const transport = this.transports.get(transportId);
-
-    if (!transport) {
-      throw new WsException("Transport not found");
-    }
-
-    return transport;
-  }
-
-  private getStream(client: MediaSocket, streamId: string) {
-    let stream = this.mediaStreams.get(streamId);
-
-    if (!stream) {
-      stream = {
-        streamId,
-        producers: [],
-        routerId: client.routerId,
-      };
-
-      this.mediaStreams.set(streamId, stream);
-
-      client.to(client.routerId).emit("newStream", stream);
-    }
-
-    return stream;
-  }
-
-  async handleConnection(client: MediaSocket) {
+  async handleConnection(client: IMediaSocket) {
     client.routerId = client.handshake.query.routerId as string;
 
     await client.join(client.routerId);
-    this.clients.set(client.id, new Set());
+    this.clientTransports.set(client.id, new Set());
 
-    const mediaStreams = [...this.mediaStreams.values()].filter(
-      (stream) => stream.routerId == client.routerId,
-    );
-
+    const mediaStreams = this.mediaStreams.getStreams(client.routerId);
     client.emit("join", mediaStreams);
   }
 
-  handleDisconnection(client: MediaSocket) {
-    this.clients.get(client.id)?.forEach((transportId) => {
-      this.transports.get(transportId)?.close();
-      this.transports.delete(transportId);
+  handleDisconnect(client: IMediaSocket) {
+    const transports = this.clientTransports.get(client.id);
+    this.clientTransports.delete(client.id);
+
+    transports?.forEach((transportId) => {
+      this.mediaTransports.close(transportId);
+      this.mediaStreams.closeStreams(client, transportId);
     });
   }
 
-  async getRouterRtpCapabilities(client: MediaSocket) {
-    let router = this.routers.get(client.routerId);
-
-    if (!router) {
-      router = await this.createRouter(client.routerId);
-    }
-
-    return router.rtpCapabilities;
+  getRouterRtpCapabilities(client: IMediaSocket) {
+    return this.mediaRouters.getRouterRtpCapabilities(client.routerId);
   }
 
-  async createWebRtcTransport(client: MediaSocket) {
-    const router = this.routers.get(client.routerId);
+  async createWebRtcTransport(client: IMediaSocket) {
+    const transport = await this.mediaTransports.createWebRtcTransport(
+      client.routerId,
+    );
 
-    if (!router) {
-      throw new WsException("Router not found");
-    }
-
-    const transport = await router.createWebRtcTransport({
-      listenIps: ["0.0.0.0"],
-    });
-
-    this.transports.set(transport.id, transport);
-    this.clients.get(client.id)?.add(transport.id);
-
-    transport.once("routerclose", () => {
-      this.transports.delete(transport.id);
-      this.clients.get(client.id)?.delete(transport.id);
-      transport.close();
-    });
+    this.clientTransports.get(client.id)?.add(transport.id);
 
     return {
       id: transport.id,
@@ -140,62 +63,61 @@ export class MediaService {
     transportId: string,
     dtlsParameters: types.DtlsParameters,
   ) {
-    const transport = this.getTransport(transportId);
-    await transport.connect({ dtlsParameters });
+    await this.mediaTransports.connectTransport(transportId, dtlsParameters);
     return "connected";
   }
 
-  async createProducer(
-    client: MediaSocket,
-    streamId: string,
+  async produce(
+    client: IMediaSocket,
     transportId: string,
+    streamId: string,
     kind: types.MediaKind,
     rtpParameters: types.RtpParameters,
   ) {
-    const transport = this.getTransport(transportId);
-    const producer = await transport.produce({ kind, rtpParameters });
-    const stream = this.getStream(client, streamId);
-
-    stream.producers.push(producer.id);
+    const producer = await this.mediaProducers.produce(
+      transportId,
+      kind,
+      rtpParameters,
+    );
 
     client.to(client.routerId).emit("newProducer", {
-      streamId: stream.streamId,
-      producerId: producer.id,
+      streamId,
+      id: producer.id,
     });
 
-    producer.once("transportclose", () => {
-      producer.close();
-
-      stream.producers = stream.producers.filter(
-        (producerId) => producerId !== producer.id,
-      );
-
-      if (!stream.producers.length) {
-        client.to(client.routerId).emit("removeStream", stream);
-        this.mediaStreams.delete(stream.streamId);
-      }
+    producer.on("transportclose", () => {
+      this.closeStream(client, streamId);
     });
+
+    const stream =
+      this.mediaStreams.get(streamId) ??
+      this.mediaStreams.create(client, streamId, transportId);
+
+    stream.producers.push(producer.id);
 
     return { id: producer.id };
   }
 
-  async createConsumer(
+  closeProducer(client: IMediaSocket, streamId: string, producerId: string) {
+    this.mediaStreams.closeProducer(client, streamId, producerId);
+    return "closed";
+  }
+
+  closeStream(client: IMediaSocket, streamId: string) {
+    this.mediaStreams.close(client, streamId);
+    return "closed";
+  }
+
+  async consume(
     transportId: string,
     producerId: string,
     rtpCapabilities: types.RtpCapabilities,
   ) {
-    const transport = this.getTransport(transportId);
-    const consumer = await transport.consume({
+    const consumer = await this.mediaConsumers.consume(
+      transportId,
       producerId,
       rtpCapabilities,
-    });
-
-    const handleClose = () => {
-      consumer.close();
-    };
-
-    consumer.once("producerclose", handleClose);
-    consumer.once("transportclose", handleClose);
+    );
 
     return {
       id: consumer.id,
