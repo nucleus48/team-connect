@@ -4,39 +4,32 @@ import { IMediaSocket } from "./media.interface";
 import { MediaConsumers } from "./providers/media.consumers";
 import { MediaProducers } from "./providers/media.producers";
 import { MediaRouters } from "./providers/media.routers";
-import { MediaStreams } from "./providers/media.streams";
 import { MediaTransports } from "./providers/media.transports";
 
 @Injectable()
 export class MediaService {
-  private readonly clientTransports: Map<string, Set<string>> = new Map();
-
   constructor(
     private readonly mediaRouters: MediaRouters,
     private readonly mediaTransports: MediaTransports,
-    private readonly mediaStreams: MediaStreams,
     private readonly mediaProducers: MediaProducers,
     private readonly mediaConsumers: MediaConsumers,
   ) {}
 
   async handleConnection(client: IMediaSocket) {
     client.routerId = client.handshake.query.routerId as string;
+    const producers = this.mediaProducers.getByRouterId(client.routerId);
 
     await client.join(client.routerId);
-    this.clientTransports.set(client.id, new Set());
-
-    const mediaStreams = this.mediaStreams.getStreams(client.routerId);
-    client.emit("join", mediaStreams);
+    client.emit("producers", producers);
   }
 
   handleDisconnect(client: IMediaSocket) {
-    const transports = this.clientTransports.get(client.id);
-    this.clientTransports.delete(client.id);
+    this.mediaTransports.closeByClientId(client.id);
+  }
 
-    transports?.forEach((transportId) => {
-      this.mediaTransports.close(transportId);
-      this.mediaStreams.closeStreams(client, transportId);
-    });
+  async createRouter(owner: string) {
+    const router = await this.mediaRouters.createRouter(owner);
+    return router.id;
   }
 
   getRouterRtpCapabilities(client: IMediaSocket) {
@@ -46,9 +39,8 @@ export class MediaService {
   async createWebRtcTransport(client: IMediaSocket) {
     const transport = await this.mediaTransports.createWebRtcTransport(
       client.routerId,
+      client.id,
     );
-
-    this.clientTransports.get(client.id)?.add(transport.id);
 
     return {
       id: transport.id,
@@ -75,36 +67,42 @@ export class MediaService {
     rtpParameters: types.RtpParameters,
   ) {
     const producer = await this.mediaProducers.produce(
+      client.routerId,
       transportId,
+      streamId,
       kind,
       rtpParameters,
     );
 
+    producer.on("transportclose", () => {
+      this.closeProducer(client, producer.id);
+    });
+
     client.to(client.routerId).emit("newProducer", {
       streamId,
       id: producer.id,
+      kind: producer.kind,
+      paused: true,
     });
-
-    producer.on("transportclose", () => {
-      this.closeStream(client, streamId);
-    });
-
-    const stream =
-      this.mediaStreams.get(streamId) ??
-      this.mediaStreams.create(client, streamId, transportId);
-
-    stream.producers.push(producer.id);
 
     return { id: producer.id };
   }
 
-  closeProducer(client: IMediaSocket, streamId: string, producerId: string) {
-    this.mediaStreams.closeProducer(client, streamId, producerId);
-    return "closed";
+  async pauseProducer(client: IMediaSocket, producerId: string) {
+    await this.mediaProducers.pause(producerId);
+    client.to(client.routerId).emit("pauseProducer", producerId);
+    return "paused";
   }
 
-  closeStream(client: IMediaSocket, streamId: string) {
-    this.mediaStreams.close(client, streamId);
+  async resumeProducer(client: IMediaSocket, producerId: string) {
+    await this.mediaProducers.resume(producerId);
+    client.to(client.routerId).emit("resumeProducer", producerId);
+    return "resumed";
+  }
+
+  closeProducer(client: IMediaSocket, producerId: string) {
+    this.mediaProducers.close(producerId);
+    client.to(client.routerId).emit("closeProducer", producerId);
     return "closed";
   }
 
@@ -125,5 +123,20 @@ export class MediaService {
       producerId: consumer.producerId,
       rtpParameters: consumer.rtpParameters,
     };
+  }
+
+  async pauseConsumer(consumerId: string) {
+    await this.mediaConsumers.pause(consumerId);
+    return "paused";
+  }
+
+  async resumeConsumer(consumerId: string) {
+    await this.mediaConsumers.resume(consumerId);
+    return "resumed";
+  }
+
+  closeConsumer(consumerId: string) {
+    this.mediaConsumers.close(consumerId);
+    return "closed";
   }
 }

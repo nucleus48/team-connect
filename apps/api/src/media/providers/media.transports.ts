@@ -2,21 +2,24 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { WsException } from "@nestjs/websockets";
 import { types } from "mediasoup";
+import { TransportData } from "../media.interface";
 import { MediaRouters } from "./media.routers";
 
 @Injectable()
 export class MediaTransports {
-  private readonly transports: Map<string, types.WebRtcTransport> = new Map();
+  private transports: Map<string, types.WebRtcTransport<TransportData>> =
+    new Map();
 
   constructor(
     private readonly configService: ConfigService,
     private readonly mediaRouters: MediaRouters,
   ) {}
 
-  async createWebRtcTransport(routerId: string) {
+  async createWebRtcTransport(routerId: string, clientId: string) {
     const router = this.mediaRouters.get(routerId);
 
     const transport = await router.createWebRtcTransport({
+      appData: { clientId },
       listenIps: [
         {
           ip: "0.0.0.0",
@@ -56,5 +59,14 @@ export class MediaTransports {
     const transport = this.transports.get(transportId);
     this.transports.delete(transportId);
     transport?.close();
+  }
+
+  closeByClientId(clientId: string) {
+    this.transports.forEach((transport) => {
+      if (transport.appData.clientId === clientId) {
+        this.transports.delete(transport.id);
+        transport.close();
+      }
+    });
   }
 }

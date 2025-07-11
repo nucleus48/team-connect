@@ -56,21 +56,28 @@ export class MediaGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
   }
 
+  @SubscribeMessage("pauseProducer")
+  handlePauseProducer(
+    @ConnectedSocket() client: IMediaSocket,
+    @MessageBody() producerId: string,
+  ) {
+    return this.mediaService.pauseProducer(client, producerId);
+  }
+
+  @SubscribeMessage("resumeProducer")
+  handleResumeProducer(
+    @ConnectedSocket() client: IMediaSocket,
+    @MessageBody() producerId: string,
+  ) {
+    return this.mediaService.resumeProducer(client, producerId);
+  }
+
   @SubscribeMessage("closeProducer")
   handleCloseProducer(
     @ConnectedSocket() client: IMediaSocket,
-    @MessageBody("streamId") streamId: string,
-    @MessageBody("producerId") producerId: string,
+    @MessageBody() producerId: string,
   ) {
-    return this.mediaService.closeProducer(client, streamId, producerId);
-  }
-
-  @SubscribeMessage("closeStream")
-  handleCloseStream(
-    @ConnectedSocket() client: IMediaSocket,
-    @MessageBody() streamId: string,
-  ) {
-    return this.mediaService.closeStream(client, streamId);
+    return this.mediaService.closeProducer(client, producerId);
   }
 
   @SubscribeMessage("createConsumer")
@@ -80,5 +87,20 @@ export class MediaGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody("rtpCapabilities") rtpCapabilities: types.RtpCapabilities,
   ) {
     return this.mediaService.consume(transportId, producerId, rtpCapabilities);
+  }
+
+  @SubscribeMessage("pauseConsumer")
+  handlePauseConsumer(@MessageBody() consumerId: string) {
+    return this.mediaService.pauseConsumer(consumerId);
+  }
+
+  @SubscribeMessage("resumeConsumer")
+  handleResumeConsumer(@MessageBody() consumerId: string) {
+    return this.mediaService.resumeConsumer(consumerId);
+  }
+
+  @SubscribeMessage("closeConsumer")
+  handleCloseConsumer(@MessageBody() consumerId: string) {
+    return this.mediaService.closeConsumer(consumerId);
   }
 }

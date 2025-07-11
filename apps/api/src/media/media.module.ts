@@ -4,9 +4,9 @@ import { MediaService } from "./media.service";
 import { MediaConsumers } from "./providers/media.consumers";
 import { MediaProducers } from "./providers/media.producers";
 import { MediaRouters } from "./providers/media.routers";
-import { MediaStreams } from "./providers/media.streams";
 import { MediaTransports } from "./providers/media.transports";
 import { MediaWorkers } from "./providers/media.workers";
+import { MediaController } from './media.controller';
 
 @Module({
   providers: [
@@ -15,9 +15,9 @@ import { MediaWorkers } from "./providers/media.workers";
     MediaWorkers,
     MediaRouters,
     MediaTransports,
-    MediaStreams,
     MediaConsumers,
     MediaProducers,
   ],
+  controllers: [MediaController],
 })
 export class MediaModule {}

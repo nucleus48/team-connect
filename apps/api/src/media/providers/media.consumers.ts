@@ -16,6 +16,7 @@ export class MediaConsumers {
     const consumer = await this.mediaTransports.get(transportId).consume({
       producerId,
       rtpCapabilities,
+      paused: true,
     });
 
     this.consumers.set(consumer.id, consumer);
@@ -31,7 +32,15 @@ export class MediaConsumers {
     return consumer;
   }
 
-  private close(consumerId: string) {
+  async pause(consumerId: string) {
+    await this.consumers.get(consumerId)?.pause();
+  }
+
+  async resume(consumerId: string) {
+    await this.consumers.get(consumerId)?.resume();
+  }
+
+  close(consumerId: string) {
     const consumer = this.consumers.get(consumerId);
     this.consumers.delete(consumerId);
     consumer?.close();
