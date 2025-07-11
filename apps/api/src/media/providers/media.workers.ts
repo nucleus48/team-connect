@@ -1,4 +1,5 @@
 import { Injectable, OnModuleInit } from "@nestjs/common";
+import { WsException } from "@nestjs/websockets";
 import { createWorker, types } from "mediasoup";
 import { cpus } from "os";
 
@@ -33,13 +34,13 @@ export class MediaWorkers implements OnModuleInit {
     try {
       this.workers = await Promise.all(workerPromises);
     } catch (error) {
-      throw new Error(`Failed to create mediasoup workers: ${error}`);
+      throw new WsException(`Failed to create mediasoup workers: ${error}`);
     }
   }
 
   get worker() {
     if (this.workers.length === 0) {
-      throw new Error("No mediasoup workers available");
+      throw new WsException("No mediasoup workers available");
     }
 
     const worker = this.workers[this.nextWorkerIdx++];
