@@ -1,25 +1,25 @@
 "use client";
 
-import { useMedia } from "../providers/media-provider";
+import { useDisplayMedia } from "../providers/display-media-provider";
 import { useTransport } from "../providers/transport-provider";
-import DisplayStream from "./display-stream";
-import RemoteStream from "./remote-stream";
-import UserStream from "./user-stream";
+import { useUserMedia } from "../providers/user-media-provider";
+import DisplayMedia from "./display-media";
+import RemoteMedia from "./remote-media";
+import UserMedia from "./user-media";
 
 export default function MediaStreams() {
-  const { userStream, displayStreams } = useMedia();
-  const { remoteStreams } = useTransport();
+  const { mediaStream } = useUserMedia();
+  const { displayMedias } = useDisplayMedia();
+  const { remoteMedias } = useTransport();
 
   return (
-    <div className="grid">
-      {userStream && (
-        <UserStream className="rotate-y-180" stream={userStream} />
-      )}
-      {displayStreams.map((displayStream) => (
-        <DisplayStream key={displayStream.id} stream={displayStream} />
+    <div className="grid h-full [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))] gap-8">
+      {mediaStream && <UserMedia mediaStream={mediaStream} />}
+      {displayMedias.map((mediaStream) => (
+        <DisplayMedia key={mediaStream.id} mediaStream={mediaStream} />
       ))}
-      {remoteStreams.map((remoteStream) => (
-        <RemoteStream key={remoteStream.id} remoteStream={remoteStream} />
+      {remoteMedias.map((remoteProducers, index) => (
+        <RemoteMedia key={index} remoteProducers={remoteProducers} />
       ))}
     </div>
   );

@@ -2,102 +2,125 @@
 
 import { io, Socket } from "@/lib/socket";
 import { Device, types } from "mediasoup-client";
-import { createContext, use, useEffect, useState } from "react";
+import {
+  createContext,
+  use,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+export type RemoteProducer = {
+  id: string;
+  streamId: string;
+  kind: types.MediaKind;
+  paused: boolean;
+};
 
 export type TransportProviderProps = React.PropsWithChildren<{
   routerId: string;
 }>;
 
-export type RemoteStream = {
-  id: string;
-  routerId: string;
-  clientId: string;
-  transportId: string;
-  producers: string[];
-};
-
-export type RemoteProducer = {
-  id: string;
-  streamId: string;
-};
-
 export type TransportContextValue = {
-  device?: Device;
-  socket?: Socket;
+  socketRef: React.RefObject<Socket | null>;
+  deviceRef: React.RefObject<Device | null>;
   producerTransport?: types.Transport;
   consumerTransport?: types.Transport;
-  remoteStreams: RemoteStream[];
+  remoteMedias: RemoteProducer[][];
+  removeRemoteProducer: (producerId: string) => void;
 };
 
-const TransportContext = createContext<TransportContextValue>({
-  remoteStreams: [],
-});
+const TransportContext = createContext<TransportContextValue | null>(null);
 
 export default function TransportProvider({
   children,
   routerId,
 }: TransportProviderProps) {
-  const [socket, setSocket] = useState<Socket>();
-  const [device, setDevice] = useState<Device>();
   const [producerTransport, setProducerTransport] = useState<types.Transport>();
   const [consumerTransport, setConsumerTransport] = useState<types.Transport>();
-  const [remoteStreams, setRemoteStreams] = useState<RemoteStream[]>([]);
+  const [remoteProducers, setRemoteProducers] = useState<RemoteProducer[]>([]);
 
-  useEffect(() => {
+  const remoteMedias = useMemo(() => {
+    return Object.values(
+      Object.groupBy(remoteProducers, (item) => item.streamId),
+    ).filter((v) => !!v);
+  }, [remoteProducers]);
+
+  const socketRef = useRef<Socket>(null);
+  const deviceRef = useRef<Device>(null);
+
+  const removeRemoteProducer = useCallback((producerId: string) => {
+    setRemoteProducers((remoteProducers) =>
+      remoteProducers.filter(
+        (remoteProducer) => remoteProducer.id !== producerId,
+      ),
+    );
+  }, []);
+
+  useLayoutEffect(() => {
     const socket = io(`http://localhost:3030/?routerId=${routerId}`);
     const device = new Device();
 
-    setSocket(socket);
-    setDevice(device);
-    setRemoteStreams([]);
+    socketRef.current = socket;
+    deviceRef.current = device;
 
-    socket.on("join", (remoteStreams: RemoteStream[]) => {
-      setRemoteStreams(remoteStreams);
-    });
+    setRemoteProducers([]);
 
-    socket.on("newStream", (remoteStream: RemoteStream) => {
-      setRemoteStreams((remoteStreams) => [...remoteStreams, remoteStream]);
-    });
-
-    socket.on("closeStream", (streamId: string) => {
-      setRemoteStreams((remoteStreams) =>
-        remoteStreams.filter((remoteStream) => remoteStream.id !== streamId),
-      );
+    socket.on("producers", (remoteProducers: RemoteProducer[]) => {
+      setRemoteProducers(remoteProducers);
     });
 
     socket.on("newProducer", (remoteProducer: RemoteProducer) => {
-      setRemoteStreams((remoteStreams) =>
-        remoteStreams.map((remoteStream) => {
-          if (remoteStream.id == remoteProducer.streamId) {
+      setRemoteProducers((remoteProducers) => [
+        ...remoteProducers,
+        remoteProducer,
+      ]);
+    });
+
+    socket.on("pauseProducer", (producerId: string) => {
+      setRemoteProducers((remoteProducers) =>
+        remoteProducers.map((remoteProducer) => {
+          if (remoteProducer.id === producerId) {
             return {
-              ...remoteStream,
-              producers: [...remoteStream.producers, remoteProducer.id],
+              ...remoteProducer,
+              paused: true,
             };
           }
 
-          return remoteStream;
+          return remoteProducer;
         }),
       );
     });
 
-    socket.on("closeProducer", (remoteProducer: RemoteProducer) => {
-      setRemoteStreams((remoteStreams) =>
-        remoteStreams.map((remoteStream) => {
-          if (remoteStream.id == remoteProducer.streamId) {
+    socket.on("resumeProducer", (producerId: string) => {
+      setRemoteProducers((remoteProducers) =>
+        remoteProducers.map((remoteProducer) => {
+          if (remoteProducer.id === producerId) {
             return {
-              ...remoteStream,
-              producers: remoteStream.producers.filter(
-                (producerId) => producerId !== remoteProducer.id,
-              ),
+              ...remoteProducer,
+              paused: false,
             };
           }
 
-          return remoteStream;
+          return remoteProducer;
         }),
       );
     });
 
-    async function setup() {
+    socket.on("closeProducer", (producerId: string) => {
+      setRemoteProducers((remoteProducers) =>
+        remoteProducers.filter(
+          (remoteProducer) => remoteProducer.id !== producerId,
+        ),
+      );
+    });
+
+    let producerTransport: types.Transport | undefined;
+    let consumerTransport: types.Transport | undefined;
+
+    (async () => {
       const routerRtpCapabilities = await socket.request<types.RtpCapabilities>(
         "getRouterRtpCapabilities",
       );
@@ -110,13 +133,8 @@ export default function TransportProvider({
       const consumerTransportOptions =
         await socket.request<types.TransportOptions>("createWebRtcTransport");
 
-      const producerTransport = device.createSendTransport(
-        producerTransportOptions,
-      );
-
-      const consumerTransport = device.createRecvTransport(
-        consumerTransportOptions,
-      );
+      producerTransport = device.createSendTransport(producerTransportOptions);
+      consumerTransport = device.createRecvTransport(consumerTransportOptions);
 
       setProducerTransport(producerTransport);
       setConsumerTransport(consumerTransport);
@@ -166,23 +184,24 @@ export default function TransportProvider({
           reject(error as Error);
         }
       });
-    }
-
-    setup();
+    })();
 
     return () => {
       socket.disconnect();
+      producerTransport?.close();
+      consumerTransport?.close();
     };
   }, [routerId]);
 
   return (
     <TransportContext
       value={{
-        device,
-        socket,
+        socketRef,
+        deviceRef,
         producerTransport,
         consumerTransport,
-        remoteStreams,
+        remoteMedias,
+        removeRemoteProducer,
       }}
     >
       {children}
@@ -190,4 +209,4 @@ export default function TransportProvider({
   );
 }
 
-export const useTransport = () => use(TransportContext);
+export const useTransport = () => use(TransportContext)!;

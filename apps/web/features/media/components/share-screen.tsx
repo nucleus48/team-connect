@@ -1,14 +1,19 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useMedia } from "../providers/media-provider";
+import { ScreenShareIcon } from "lucide-react";
+import { useDisplayMedia } from "../providers/display-media-provider";
 
 export default function ShareScreen() {
-  const { addDisplayStream } = useMedia();
+  const { addDisplayMedia } = useDisplayMedia();
 
   return (
-    <Button onClick={() => addDisplayStream?.({ audio: true, video: true })}>
-      Share Screen
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={() => addDisplayMedia({ audio: true, video: true })}
+    >
+      <ScreenShareIcon />
     </Button>
   );
 }
