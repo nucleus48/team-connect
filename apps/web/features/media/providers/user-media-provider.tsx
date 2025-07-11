@@ -28,17 +28,22 @@ export default function UserMediaProvider({
 
   useEffect(() => {
     (async () => {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-        },
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-      });
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+          },
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        });
 
-      setMediaStream(mediaStream);
+        setMediaStream(mediaStream);
+      } catch (error) {
+        console.error("Failed to access media devices:", error);
+        // Consider setting an error state or showing a user-friendly message
+      }
     })();
   }, []);
 

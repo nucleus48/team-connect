@@ -52,7 +52,7 @@ export class MediaProducers {
       id: producer.id,
       kind: producer.kind,
       streamId: producer.appData.streamId,
-      paused: false,
+      paused: producer.paused,
     }));
   }
 }

@@ -37,18 +37,22 @@ const useConsumerProducer = (
     let consumer: types.Consumer | undefined;
 
     (async () => {
-      const consumerOptions = await socket.request<types.ConsumerOptions>(
-        "createConsumer",
-        {
-          producerId,
-          transportId: consumerTransport.id,
-          rtpCapabilities: deviceRef.current?.rtpCapabilities,
-        },
-      );
+      try {
+        const consumerOptions = await socket.request<types.ConsumerOptions>(
+          "createConsumer",
+          {
+            producerId,
+            transportId: consumerTransport.id,
+            rtpCapabilities: deviceRef.current?.rtpCapabilities,
+          },
+        );
 
-      consumer = await consumerTransport.consume(consumerOptions!);
-      mediaStream.addTrack(consumer.track);
-      setConsumer(consumer);
+        consumer = await consumerTransport.consume(consumerOptions);
+        mediaStream.addTrack(consumer.track);
+        setConsumer(consumer);
+      } catch (error) {
+        console.error("Failed to create consumer:", error);
+      }
     })();
 
     return () => {
@@ -56,6 +60,7 @@ const useConsumerProducer = (
         socket.emit("closeConsumer", consumer.id);
         mediaStream.removeTrack(consumer.track);
         consumer.track.stop();
+        consumer.close();
       }
     };
   }, [socketRef, deviceRef, consumerTransport, mediaStream, producerId]);

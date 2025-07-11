@@ -19,7 +19,7 @@ export default function DisplayMedia({ mediaStream }: DisplayStreamProps) {
     <Video
       muted
       mediaStream={mediaStream}
-      className={cn(isVideoEnabled || "opacity-0")}
+      className={cn(isVideoEnabled ? "" : "opacity-0")}
     />
   );
 }

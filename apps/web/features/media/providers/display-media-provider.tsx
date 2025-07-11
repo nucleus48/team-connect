@@ -19,8 +19,13 @@ export default function DisplayMediaProvider({
 
   const addDisplayMedia = useCallback(
     async (options: DisplayMediaStreamOptions) => {
-      const mediaStream = await navigator.mediaDevices.getDisplayMedia(options);
-      setDisplayMedias((mediaStreams) => [...mediaStreams, mediaStream]);
+      try {
+        const mediaStream = await navigator.mediaDevices.getDisplayMedia(options);
+        setDisplayMedias((mediaStreams) => [...mediaStreams, mediaStream]);
+      } catch (error) {
+        console.error('Failed to get display media:', error);
+        throw error; // Re-throw to let caller handle the error
+      }
     },
     [],
   );
@@ -44,4 +49,12 @@ export default function DisplayMediaProvider({
   );
 }
 
-export const useDisplayMedia = () => use(DisplayMediaContext)!;
+export const useDisplayMedia = () => {
+  const context = use(DisplayMediaContext);
+  if (!context) {
+    throw new Error(
+      'useDisplayMedia must be used within a DisplayMediaProvider'
+    );
+  }
+  return context;
+};

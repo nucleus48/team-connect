@@ -18,8 +18,11 @@ export default function MediaStreams() {
       {displayMedias.map((mediaStream) => (
         <DisplayMedia key={mediaStream.id} mediaStream={mediaStream} />
       ))}
-      {remoteMedias.map((remoteProducers, index) => (
-        <RemoteMedia key={index} remoteProducers={remoteProducers} />
+      {remoteMedias.map((remoteProducers) => (
+        <RemoteMedia
+          key={remoteProducers[0]?.streamId || JSON.stringify(remoteProducers)}
+          remoteProducers={remoteProducers}
+        />
       ))}
     </div>
   );
