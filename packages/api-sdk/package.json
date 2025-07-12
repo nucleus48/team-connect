@@ -1,7 +1,0 @@
-{
-  "name": "@repo/api-sdk",
-  "version": "1.0.0",
-  "main": "index.ts",
-  "license": "UNLICENSED",
-  "private": true
-}

@@ -1,0 +1,22 @@
+{
+  "name": "@repo/shared-types",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "socket.io": "^4.8.1"
+  },
+  "packageManager": "yarn@1.22.22",
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

@@ -7,13 +7,13 @@ export interface Socket extends ISocket {
 export function io(...args: Parameters<typeof baseIo>) {
   const socket = baseIo(...args) as Socket;
 
-  socket.request = (event, data) => {
-    return new Promise((resolve, reject) => {
+  socket.request = <T>(event: string, data: unknown) => {
+    return new Promise<T>((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error(`Request timeout for event: ${event}`));
       }, 10000); // 10 second timeout
-      
-      socket.emit(event, data, (response: any) => {
+
+      socket.emit(event, data, (response: T & { error?: string }) => {
         clearTimeout(timeout);
         if (response?.error) {
           reject(new Error(response.error));

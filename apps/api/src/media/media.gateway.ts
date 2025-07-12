@@ -6,8 +6,8 @@ import {
   SubscribeMessage,
   WebSocketGateway,
 } from "@nestjs/websockets";
+import { IMediaSocket } from "@repo/shared-types";
 import { types } from "mediasoup";
-import { IMediaSocket } from "./media.interface";
 import { MediaService } from "./media.service";
 
 @WebSocketGateway({ cors: true })

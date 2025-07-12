@@ -1,36 +1,20 @@
 "use server";
 
-import { config, handleApiError } from "@/lib/api";
-import { AuthApi } from "@repo/api-sdk";
+import { api } from "@/lib/api";
+import { TokensEntity } from "@repo/shared-types";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-const authApi = new AuthApi(config);
-
 export async function signup(email: string, password: string) {
-  const res = await handleApiError(
-    authApi.authControllerSignup({
-      signUpDto: { email, password },
-    }),
-  );
-
-  if (!res.success) return res.data;
-
+  const res = await api.post<TokensEntity>("/auth/signup", { email, password });
   const cookieStore = await cookies();
-  cookieStore.set("access_token", res.data.accessToken);
+  cookieStore.set("access_token", res.data.access_token);
   return redirect("/");
 }
 
 export async function login(email: string, password: string) {
-  const res = await handleApiError(
-    authApi.authControllerLogin({
-      logInDto: { email, password },
-    }),
-  );
-
-  if (!res.success) return res.data;
-
+  const res = await api.post<TokensEntity>("/auth/login", { email, password });
   const cookieStore = await cookies();
-  cookieStore.set("access_token", res.data.accessToken);
+  cookieStore.set("access_token", res.data.access_token);
   return redirect("/");
 }
