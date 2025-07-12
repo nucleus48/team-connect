@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { WsException } from "@nestjs/websockets";
-import { TransportData } from "@repo/shared-types";
 import { types } from "mediasoup";
+import { TransportData } from "../media.types";
 import { MediaRouters } from "./media.routers";
 
 @Injectable()

@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { WsException } from "@nestjs/websockets";
-import { RouterData } from "@repo/shared-types";
 import { types } from "mediasoup";
+import { RouterData } from "../media.types";
 import { MediaWorkers } from "./media.workers";
 
 @Injectable()

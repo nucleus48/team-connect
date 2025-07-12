@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { ProducerData } from "@repo/shared-types";
 import { types } from "mediasoup";
+import { ProducerData } from "../media.types";
 import { MediaTransports } from "./media.transports";
 
 @Injectable()

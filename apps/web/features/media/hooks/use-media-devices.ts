@@ -7,13 +7,8 @@ export const useMediaDevices = () => {
 
   useEffect(() => {
     async function enumerateDevices() {
-      try {
-        const mediaDevices = await navigator.mediaDevices.enumerateDevices();
-        setMediaDevices(mediaDevices);
-      } catch (error) {
-        console.error('Failed to enumerate media devices:', error);
-        setMediaDevices([]);
-      }
+      const mediaDevices = await navigator.mediaDevices.enumerateDevices();
+      setMediaDevices(mediaDevices);
     }
 
     enumerateDevices();

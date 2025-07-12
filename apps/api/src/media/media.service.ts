@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { IMediaSocket } from "@repo/shared-types";
 import { types } from "mediasoup";
+import { IMediaSocket } from "./media.types";
 import { MediaConsumers } from "./providers/media.consumers";
 import { MediaProducers } from "./providers/media.producers";
 import { MediaRouters } from "./providers/media.routers";

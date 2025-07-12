@@ -1,8 +1,9 @@
 import { UsersService } from "@/users/users.service";
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { LogInDto, SignUpDto, TokensEntity } from "@repo/shared-types";
+import { TokensEntity } from "@repo/shared-types";
 import { compare, hash } from "bcrypt";
+import { LogInDto, SignUpDto } from "./auth.dto";
 
 @Injectable()
 export class AuthService {

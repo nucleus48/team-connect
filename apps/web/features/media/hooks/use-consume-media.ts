@@ -1,5 +1,6 @@
 "use client";
 
+import { withAbortController } from "@/lib/utils";
 import { types } from "mediasoup-client";
 import { useEffect, useMemo, useState } from "react";
 import { RemoteProducer, useTransport } from "../providers/transport-provider";
@@ -34,34 +35,39 @@ const useConsumerProducer = (
     if (!producerId || !consumerTransport) return;
 
     const socket = socketRef.current!;
-    let consumer: types.Consumer | undefined;
 
-    (async () => {
-      try {
-        const consumerOptions = await socket.request<types.ConsumerOptions>(
-          "createConsumer",
-          {
-            producerId,
-            transportId: consumerTransport.id,
-            rtpCapabilities: deviceRef.current?.rtpCapabilities,
-          },
-        );
+    const consumerPromise = (async () => {
+      const consumerOptions = await socket.request<types.ConsumerOptions>(
+        "createConsumer",
+        {
+          producerId,
+          transportId: consumerTransport.id,
+          rtpCapabilities: deviceRef.current?.rtpCapabilities,
+        },
+      );
 
-        consumer = await consumerTransport.consume(consumerOptions);
-        mediaStream.addTrack(consumer.track);
-        setConsumer(consumer);
-      } catch (error) {
-        console.error("Failed to create consumer:", error);
-      }
+      const consumer = await consumerTransport.consume(consumerOptions);
+      return consumer;
     })();
 
+    const abortController = new AbortController();
+
+    withAbortController(
+      consumerPromise.then((consumer) => {
+        mediaStream.addTrack(consumer.track);
+        setConsumer(consumer);
+      }),
+      abortController.signal,
+    );
+
     return () => {
-      if (consumer) {
+      abortController.abort("useConsumeProducer cleanup");
+      consumerPromise.then((consumer) => {
         socket.emit("closeConsumer", consumer.id);
         mediaStream.removeTrack(consumer.track);
         consumer.track.stop();
         consumer.close();
-      }
+      });
     };
   }, [socketRef, deviceRef, consumerTransport, mediaStream, producerId]);
 

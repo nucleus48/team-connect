@@ -1,5 +1,6 @@
 "use client";
 
+import { withAbortController } from "@/lib/utils";
 import { types } from "mediasoup-client";
 import { useEffect, useMemo, useState } from "react";
 import { useTransport } from "../providers/transport-provider";
@@ -44,22 +45,24 @@ const useProduceTrack = (
     if (!track || !streamId || !producerTransport) return;
 
     const socket = socketRef.current;
-    let producer: types.Producer | undefined;
+    const producerPromise = producerTransport.produce({
+      track,
+      appData: { streamId },
+    });
 
-    (async () => {
-      producer = await producerTransport.produce({
-        track,
-        appData: { streamId },
-      });
+    const abortController = new AbortController();
 
-      setProducer(producer);
-    })();
+    withAbortController(
+      producerPromise.then(setProducer),
+      abortController.signal,
+    );
 
     return () => {
-      if (producer) {
-        socket?.emit("closeProducer", producer.id);
+      abortController.abort("useProduceTrack cleanup");
+      producerPromise.then(({ id }) => {
+        socket?.emit("closeProducer", id);
         track.stop();
-      }
+      });
     };
   }, [producerTransport, socketRef, streamId, track]);
 

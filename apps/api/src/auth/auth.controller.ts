@@ -5,7 +5,7 @@ import {
   Post,
   UseInterceptors,
 } from "@nestjs/common";
-import { LogInDto, SignUpDto } from "@repo/shared-types";
+import { LogInDto, SignUpDto } from "./auth.dto";
 import { AuthService } from "./auth.service";
 
 @Controller("auth")

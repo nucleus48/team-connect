@@ -1,3 +1,4 @@
+import { UseFilters } from "@nestjs/common";
 import {
   ConnectedSocket,
   MessageBody,
@@ -6,10 +7,12 @@ import {
   SubscribeMessage,
   WebSocketGateway,
 } from "@nestjs/websockets";
-import { IMediaSocket } from "@repo/shared-types";
 import { types } from "mediasoup";
+import { WsExceptionFilter } from "./media.filters";
 import { MediaService } from "./media.service";
+import { IMediaSocket } from "./media.types";
 
+@UseFilters(new WsExceptionFilter())
 @WebSocketGateway({ cors: true })
 export class MediaGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(private readonly mediaService: MediaService) {}
@@ -43,14 +46,15 @@ export class MediaGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage("createProducer")
   handleCreateProducer(
     @ConnectedSocket() client: IMediaSocket,
-    @MessageBody("appData") appData: types.AppData,
     @MessageBody("kind") kind: types.MediaKind,
     @MessageBody("rtpParameters") rtpParameters: types.RtpParameters,
+    @MessageBody("appData")
+    { transportId, streamId }: { transportId: string; streamId: string },
   ) {
     return this.mediaService.produce(
       client,
-      appData.transportId as string,
-      appData.streamId as string,
+      transportId,
+      streamId,
       kind,
       rtpParameters,
     );

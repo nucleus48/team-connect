@@ -1,6 +1,7 @@
 "use client";
 
 import { io, Socket } from "@/lib/socket";
+import { withAbortController } from "@/lib/utils";
 import { Device, types } from "mediasoup-client";
 import {
   createContext,
@@ -117,10 +118,7 @@ export default function TransportProvider({
       );
     });
 
-    let producerTransport: types.Transport | undefined;
-    let consumerTransport: types.Transport | undefined;
-
-    (async () => {
+    async function initTransports() {
       const routerRtpCapabilities = await socket.request<types.RtpCapabilities>(
         "getRouterRtpCapabilities",
       );
@@ -133,8 +131,13 @@ export default function TransportProvider({
       const consumerTransportOptions =
         await socket.request<types.TransportOptions>("createWebRtcTransport");
 
-      producerTransport = device.createSendTransport(producerTransportOptions);
-      consumerTransport = device.createRecvTransport(consumerTransportOptions);
+      const producerTransport = device.createSendTransport(
+        producerTransportOptions,
+      );
+
+      const consumerTransport = device.createRecvTransport(
+        consumerTransportOptions,
+      );
 
       setProducerTransport(producerTransport);
       setConsumerTransport(consumerTransport);
@@ -157,15 +160,8 @@ export default function TransportProvider({
           }
         };
 
-      producerTransport.on(
-        "connect",
-        handleConnection(producerTransportOptions.id),
-      );
-
-      consumerTransport.on(
-        "connect",
-        handleConnection(consumerTransportOptions.id),
-      );
+      producerTransport.on("connect", handleConnection(producerTransport.id));
+      consumerTransport.on("connect", handleConnection(consumerTransport.id));
 
       producerTransport.on("produce", async (data, resolve, reject) => {
         try {
@@ -175,7 +171,7 @@ export default function TransportProvider({
               ...data,
               appData: {
                 ...data.appData,
-                transportId: producerTransportOptions.id,
+                transportId: producerTransport.id,
               },
             },
           );
@@ -184,12 +180,14 @@ export default function TransportProvider({
           reject(error as Error);
         }
       });
-    })();
+    }
+
+    const abortController = new AbortController();
+    withAbortController(initTransports(), abortController.signal);
 
     return () => {
       socket.disconnect();
-      producerTransport?.close();
-      consumerTransport?.close();
+      abortController.abort("useLayout cleanup");
     };
   }, [routerId]);
 
