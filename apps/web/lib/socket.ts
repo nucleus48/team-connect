@@ -1,27 +1,27 @@
-import { io as baseIo, type Socket as ISocket } from "socket.io-client";
+import "client-only";
 
-export interface Socket extends ISocket {
-  request<T>(event: string, data?: unknown): Promise<T>;
+import { io as baseIo, Socket as BaseSocket } from "socket.io-client";
+import { fetchAccessToken } from "./actions";
+
+export interface Socket extends BaseSocket {
+  request<T>(event: string, data?: Record<string, unknown>): Promise<T>;
 }
 
 export function io(...args: Parameters<typeof baseIo>) {
   const socket = baseIo(...args) as Socket;
 
-  socket.request = <T>(event: string, data: unknown) => {
-    return new Promise<T>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error(`Request timeout for event: ${event}`));
-      }, 10000); // 10 second timeout
+  let accessToken: string | undefined;
 
-      socket.emit(event, data, (response: T & { error?: string }) => {
-        clearTimeout(timeout);
-        if (response?.error) {
-          reject(new Error(response.error));
-        } else {
-          resolve(response);
-        }
-      });
-    });
+  socket.request = async (event, data = {}) => {
+    if (!accessToken) {
+      accessToken = await fetchAccessToken();
+
+      setTimeout(() => {
+        accessToken = undefined;
+      }, 40000);
+    }
+
+    return socket.emitWithAck(event, { ...data, accessToken });
   };
 
   return socket;

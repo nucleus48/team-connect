@@ -1,30 +1,57 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 
 export type VideoProps = React.ComponentProps<"video"> & {
-  mediaStream: MediaStream;
+  audioTrack?: MediaStreamTrack;
+  videoTrack?: MediaStreamTrack;
 };
 
 export default function Video({
   children,
   className,
-  mediaStream,
+  audioTrack,
+  videoTrack,
   ...props
 }: VideoProps) {
+  const stream = useMemo(() => new MediaStream(), []);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (videoRef.current) videoRef.current.srcObject = mediaStream;
-  }, [mediaStream]);
+    if (videoRef.current) videoRef.current.srcObject = stream;
+  }, [stream]);
+
+  useEffect(() => {
+    if (audioTrack) {
+      stream.addTrack(audioTrack);
+      return () => {
+        stream.removeTrack(audioTrack);
+        audioTrack.stop();
+      };
+    }
+  }, [stream, audioTrack]);
+
+  useEffect(() => {
+    if (videoTrack) {
+      stream.addTrack(videoTrack);
+      return () => {
+        stream.removeTrack(videoTrack);
+        videoTrack.stop();
+      };
+    }
+  }, [stream, videoTrack]);
 
   return (
-    <div className="overflow-hidden rounded-xl">
+    <div>
       <video
         autoPlay
         ref={videoRef}
-        className={cn(className, "size-full object-cover")}
+        className={cn(
+          className,
+          "size-full rounded-xl object-cover",
+          videoTrack ? "opacity-100" : "opacity-0",
+        )}
         {...props}
       />
       {children}

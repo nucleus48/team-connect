@@ -1,5 +1,5 @@
 import { Database, DATABASE } from "@/db/db.module";
-import { usersTable } from "@/db/entities/users";
+import { User, usersTable } from "@/db/entities/users";
 import {
   ConflictException,
   Inject,
@@ -11,8 +11,8 @@ import {
 export class UsersService {
   constructor(@Inject(DATABASE) private readonly db: Database) {}
 
-  async createUser(email: string, password: string) {
-    const result = await this.getUserByEmail(email);
+  async createUser({ email, password }: Pick<User, "email" | "password">) {
+    const result = await this.getUserByEmail({ email });
 
     if (result) {
       throw new ConflictException("Email address already exist");
@@ -26,7 +26,7 @@ export class UsersService {
     return user;
   }
 
-  async getUserByEmail(email: string) {
+  async getUserByEmail({ email }: Pick<User, "email">) {
     const user = await this.db.query.users.findFirst({
       where: (users, { eq }) => eq(users.email, email),
     });
@@ -34,8 +34,8 @@ export class UsersService {
     return user;
   }
 
-  async getUserByEmailOrThrow(email: string) {
-    const user = await this.getUserByEmail(email);
+  async getUserByEmailOrThrow({ email }: Pick<User, "email">) {
+    const user = await this.getUserByEmail({ email });
 
     if (!user) {
       throw new NotFoundException("User not found");
@@ -44,16 +44,16 @@ export class UsersService {
     return user;
   }
 
-  async getUserById(id: number) {
+  async getUserById({ id: userId }: Pick<User, "id">) {
     const user = await this.db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.id, id),
+      where: (users, { eq }) => eq(users.id, userId),
     });
 
     return user;
   }
 
-  async getUserByIdOrThrow(id: number) {
-    const user = await this.getUserById(id);
+  async getUserByIdOrThrow({ id: userId }: Pick<User, "id">) {
+    const user = await this.getUserById({ id: userId });
 
     if (!user) {
       throw new NotFoundException("User not found");

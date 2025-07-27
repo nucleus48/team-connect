@@ -32,8 +32,8 @@ export default function SignUpForm() {
   });
 
   const onSubmit = async ({ email, password }: SignUpFormData) => {
-    const data = await signup(email, password);
-    toast.error(data.message);
+    const error = await signup(email, password);
+    toast.error(error);
   };
 
   return (

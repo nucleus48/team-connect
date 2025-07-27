@@ -1,20 +1,50 @@
 "use server";
 
-import { api } from "@/lib/api";
+import { publicApi } from "@/lib/api";
+import { setTokenCookies } from "@/lib/tokens";
 import { TokensEntity } from "@repo/shared-types";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { AxiosError } from "axios";
+import { redirect, unstable_rethrow as rethrow } from "next/navigation";
 
 export async function signup(email: string, password: string) {
-  const res = await api.post<TokensEntity>("/auth/signup", { email, password });
-  const cookieStore = await cookies();
-  cookieStore.set("access_token", res.data.access_token);
-  return redirect("/");
+  try {
+    const res = await publicApi.post<TokensEntity | null>("/auth/signup", {
+      email,
+      password,
+    });
+
+    if (res.data) {
+      await setTokenCookies(res.data);
+    }
+
+    redirect("/");
+  } catch (error) {
+    rethrow(error);
+
+    if (error instanceof AxiosError && error.status) {
+      if (error.status === 409) return "Email address already exist";
+    }
+
+    return "An error has occurred";
+  }
 }
 
 export async function login(email: string, password: string) {
-  const res = await api.post<TokensEntity>("/auth/login", { email, password });
-  const cookieStore = await cookies();
-  cookieStore.set("access_token", res.data.access_token);
-  return redirect("/");
+  try {
+    const res = await publicApi.post<TokensEntity>("/auth/login", {
+      email,
+      password,
+    });
+
+    await setTokenCookies(res.data);
+    redirect("/");
+  } catch (error) {
+    rethrow(error);
+
+    if (error instanceof AxiosError && error.status) {
+      if (error.status === 401) return "Invalid credentials";
+    }
+
+    return "An error has occurred";
+  }
 }

@@ -34,10 +34,10 @@
     "class-validator": "^0.14.2",
     "dotenv": "^17.0.0",
     "drizzle-orm": "^0.44.2",
-    "mediasoup": "^3.16.1",
-    "nestjs-trpc": "^1.6.1",
+    "mediasoup": "^3.16.7",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "socket.io": "^4.8.1",
     "zod": "^3.25.67"
   },
   "devDependencies": {

@@ -1,23 +1,12 @@
+import { AuthModule } from "@/auth/auth.module";
+import { RoomsModule } from "@/rooms/rooms.module";
 import { Module } from "@nestjs/common";
-import { MediaController } from "./media.controller";
 import { MediaGateway } from "./media.gateway";
 import { MediaService } from "./media.service";
-import { MediaConsumers } from "./providers/media.consumers";
-import { MediaProducers } from "./providers/media.producers";
-import { MediaRouters } from "./providers/media.routers";
-import { MediaTransports } from "./providers/media.transports";
-import { MediaWorkers } from "./providers/media.workers";
+import { MediaWorkers } from "./media.workers";
 
 @Module({
-  providers: [
-    MediaService,
-    MediaGateway,
-    MediaWorkers,
-    MediaRouters,
-    MediaTransports,
-    MediaConsumers,
-    MediaProducers,
-  ],
-  controllers: [MediaController],
+  imports: [AuthModule, RoomsModule],
+  providers: [MediaService, MediaGateway, MediaWorkers],
 })
 export class MediaModule {}

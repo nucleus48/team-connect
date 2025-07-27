@@ -1,11 +1,16 @@
 "use client";
 
-import { createContext, use, useCallback, useState } from "react";
+import { createContext, use, useEffect, useState } from "react";
 
 export type DisplayMediaContextValue = {
-  displayMedias: MediaStream[];
-  addDisplayMedia: (options: DisplayMediaStreamOptions) => Promise<void>;
-  removeDisplayMedia: (id: string) => void;
+  audioTrack?: MediaStreamTrack;
+  videoTrack?: MediaStreamTrack;
+  setAudioTrack: React.Dispatch<
+    React.SetStateAction<MediaStreamTrack | undefined>
+  >;
+  setVideoTrack: React.Dispatch<
+    React.SetStateAction<MediaStreamTrack | undefined>
+  >;
 };
 
 const DisplayMediaContext = createContext<DisplayMediaContextValue | null>(
@@ -15,28 +20,19 @@ const DisplayMediaContext = createContext<DisplayMediaContextValue | null>(
 export default function DisplayMediaProvider({
   children,
 }: React.PropsWithChildren) {
-  const [displayMedias, setDisplayMedias] = useState<MediaStream[]>([]);
+  const [audioTrack, setAudioTrack] = useState<MediaStreamTrack>();
+  const [videoTrack, setVideoTrack] = useState<MediaStreamTrack>();
 
-  const addDisplayMedia = useCallback(
-    async (options: DisplayMediaStreamOptions) => {
-      const mediaStream = await navigator.mediaDevices.getDisplayMedia(options);
-      setDisplayMedias((mediaStreams) => [...mediaStreams, mediaStream]);
-    },
-    [],
-  );
-
-  const removeDisplayMedia = useCallback((id: string) => {
-    setDisplayMedias((displayMedias) =>
-      displayMedias.filter((displayMedia) => displayMedia.id !== id),
-    );
-  }, []);
+  useEffect(() => () => void audioTrack?.stop(), [audioTrack]);
+  useEffect(() => () => void videoTrack?.stop(), [videoTrack]);
 
   return (
     <DisplayMediaContext
       value={{
-        displayMedias,
-        addDisplayMedia,
-        removeDisplayMedia,
+        audioTrack,
+        videoTrack,
+        setAudioTrack,
+        setVideoTrack,
       }}
     >
       {children}
@@ -44,12 +40,4 @@ export default function DisplayMediaProvider({
   );
 }
 
-export const useDisplayMedia = () => {
-  const context = use(DisplayMediaContext);
-  if (!context) {
-    throw new Error(
-      "useDisplayMedia must be used within a DisplayMediaProvider",
-    );
-  }
-  return context;
-};
+export const useDisplayMedia = () => use(DisplayMediaContext)!;

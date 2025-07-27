@@ -1,8 +1,7 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { useMemo } from "react";
-import { useConsumeMedia } from "../hooks/use-consume-media";
+import { useConsumerProducer } from "../hooks/use-consume-producer";
 import { RemoteProducer } from "../providers/transport-provider";
 import Video from "./video";
 
@@ -11,15 +10,16 @@ export type RemoteMediaProps = {
 };
 
 export default function RemoteMedia({ remoteProducers }: RemoteMediaProps) {
-  const mediaStream = useConsumeMedia(remoteProducers);
   const videoProducer = useMemo(() => {
-    return remoteProducers.find((p) => p.kind === "video");
+    return remoteProducers.find((producer) => producer.kind === "video");
   }, [remoteProducers]);
 
-  return (
-    <Video
-      mediaStream={mediaStream}
-      className={cn(videoProducer?.paused && "opacity-0")}
-    />
-  );
+  const audioProducer = useMemo(() => {
+    return remoteProducers.find((producer) => producer.kind === "audio");
+  }, [remoteProducers]);
+
+  const audioTrack = useConsumerProducer(audioProducer);
+  const videoTrack = useConsumerProducer(videoProducer);
+
+  return <Video audioTrack={audioTrack} videoTrack={videoTrack} />;
 }

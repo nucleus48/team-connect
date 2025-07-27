@@ -32,8 +32,8 @@ export default function LogInForm() {
   });
 
   const onSubmit = async ({ email, password }: LogInFormData) => {
-    const data = await login(email, password);
-    toast.error(data.message);
+    const error = await login(email, password);
+    toast.error(error);
   };
 
   return (

@@ -1,25 +1,18 @@
 "use client";
 
-import { useReducer } from "react";
-import { useProduceMedia } from "../hooks/use-produce-media";
+import { useMemo } from "react";
+import { useProduceTrack } from "../hooks/use-produce-track";
+import { useDisplayMedia } from "../providers/display-media-provider";
 import Video from "./video";
-import { cn } from "@/lib/utils";
 
-export type DisplayStreamProps = {
-  mediaStream: MediaStream;
-};
+export default function DisplayMedia() {
+  const streamId = useMemo(() => crypto.randomUUID(), []);
+  const { videoTrack, audioTrack } = useDisplayMedia();
 
-export default function DisplayMedia({ mediaStream }: DisplayStreamProps) {
-  const [isAudioEnabled, toggleAudioEnabled] = useReducer((t) => !t, true);
-  const [isVideoEnabled, toggleVideoEnabled] = useReducer((t) => !t, true);
+  useProduceTrack(streamId, audioTrack);
+  useProduceTrack(streamId, videoTrack);
 
-  useProduceMedia(mediaStream, isAudioEnabled, isVideoEnabled);
+  if (!videoTrack) return null;
 
-  return (
-    <Video
-      muted
-      mediaStream={mediaStream}
-      className={cn(isVideoEnabled ? "" : "opacity-0")}
-    />
-  );
+  return <Video muted audioTrack={audioTrack} videoTrack={videoTrack} />;
 }

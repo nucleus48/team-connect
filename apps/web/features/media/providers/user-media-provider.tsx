@@ -1,16 +1,16 @@
 "use client";
 
-import { createContext, use, useEffect, useReducer, useState } from "react";
-import { useProduceMedia } from "../hooks/use-produce-media";
+import { createContext, use, useEffect, useState } from "react";
 
 export type UserMediaContextValue = {
-  mediaStream?: MediaStream;
-  isAudioEnabled: boolean;
-  isVideoEnabled: boolean;
-  toggleAudioEnabled: () => void;
-  toggleVideoEnabled: () => void;
-  setAudioDeviceId: React.Dispatch<React.SetStateAction<string | undefined>>;
-  setVideoDeviceId: React.Dispatch<React.SetStateAction<string | undefined>>;
+  audioTrack?: MediaStreamTrack;
+  videoTrack?: MediaStreamTrack;
+  setAudioTrack: React.Dispatch<
+    React.SetStateAction<MediaStreamTrack | undefined>
+  >;
+  setVideoTrack: React.Dispatch<
+    React.SetStateAction<MediaStreamTrack | undefined>
+  >;
 };
 
 const UserMediaContext = createContext<UserMediaContextValue | null>(null);
@@ -18,40 +18,19 @@ const UserMediaContext = createContext<UserMediaContextValue | null>(null);
 export default function UserMediaProvider({
   children,
 }: React.PropsWithChildren) {
-  const [mediaStream, setMediaStream] = useState<MediaStream>();
-  const [audioDeviceId, setAudioDeviceId] = useState<string>();
-  const [videoDeviceId, setVideoDeviceId] = useState<string>();
-  const [isAudioEnabled, toggleAudioEnabled] = useReducer((t) => !t, false);
-  const [isVideoEnabled, toggleVideoEnabled] = useReducer((t) => !t, false);
+  const [audioTrack, setAudioTrack] = useState<MediaStreamTrack>();
+  const [videoTrack, setVideoTrack] = useState<MediaStreamTrack>();
 
-  useProduceMedia(mediaStream, isAudioEnabled, isVideoEnabled);
-
-  useEffect(() => {
-    (async () => {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-        },
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-      });
-
-      setMediaStream(mediaStream);
-    })();
-  }, []);
+  useEffect(() => () => void audioTrack?.stop(), [audioTrack]);
+  useEffect(() => () => void videoTrack?.stop(), [videoTrack]);
 
   return (
     <UserMediaContext
       value={{
-        mediaStream,
-        isAudioEnabled,
-        isVideoEnabled,
-        setAudioDeviceId,
-        setVideoDeviceId,
-        toggleAudioEnabled,
-        toggleVideoEnabled,
+        audioTrack,
+        videoTrack,
+        setAudioTrack,
+        setVideoTrack,
       }}
     >
       {children}

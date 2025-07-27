@@ -1,21 +1,23 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import Video from "./video";
+import { useMemo } from "react";
+import { useProduceTrack } from "../hooks/use-produce-track";
 import { useUserMedia } from "../providers/user-media-provider";
+import Video from "./video";
 
-export type UserMediaProps = {
-  mediaStream: MediaStream;
-};
+export default function UserMedia() {
+  const streamId = useMemo(() => crypto.randomUUID(), []);
+  const { videoTrack, audioTrack } = useUserMedia();
 
-export default function UserMedia({ mediaStream }: UserMediaProps) {
-  const { isVideoEnabled } = useUserMedia();
+  useProduceTrack(streamId, audioTrack);
+  useProduceTrack(streamId, videoTrack);
 
   return (
     <Video
       muted
-      mediaStream={mediaStream}
-      className={cn("rotate-y-180", isVideoEnabled || "opacity-0")}
+      className="rotate-y-180"
+      audioTrack={audioTrack}
+      videoTrack={videoTrack}
     />
   );
 }

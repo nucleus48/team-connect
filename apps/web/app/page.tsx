@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createRouter } from "@/features/media/lib/actions";
-import { KeyboardIcon, VideoIcon } from "lucide-react";
+import CreateRoomButton from "@/features/media/components/create-room-btn";
+import { KeyboardIcon } from "lucide-react";
 
 export default function Home() {
   return (
@@ -12,11 +12,8 @@ export default function Home() {
           TeamConnect lets you create private video rooms in seconds. No
           downloads, no hassle, just share the code and start talking.
         </p>
-        <form className="flex flex-wrap gap-4">
-          <Button autoFocus size={"lg"} formAction={createRouter}>
-            <VideoIcon className="size-5" />
-            <span>New room</span>
-          </Button>
+        <div className="flex flex-wrap gap-4">
+          <CreateRoomButton />
           <div className="flex items-center gap-2">
             <KeyboardIcon className="mt-0.5 -mr-11 h-5 w-9 shrink-0" />
             <Input className="h-10 pl-9" placeholder="Enter a code or link" />
@@ -24,7 +21,7 @@ export default function Home() {
               Join
             </Button>
           </div>
-        </form>
+        </div>
       </section>
       <div></div>
     </main>
