@@ -13,11 +13,7 @@ export const useProduceTrack = (streamId: string, track?: MediaStreamTrack) => {
   useEffect(() => {
     if (producer) {
       return () => {
-        socket
-          .request("closeProducer", { producerId: producer.id })
-          .then(() => {
-            producer.close();
-          });
+        socket.request("closeProducer", { producerId: producer.id });
       };
     }
   }, [producer, socket]);
@@ -33,7 +29,7 @@ export const useProduceTrack = (streamId: string, track?: MediaStreamTrack) => {
       return;
     }
 
-    if (!producerTransport || !track) return;
+    if (!producerTransport || track?.readyState !== "live") return;
 
     let isMounted = true;
 
@@ -47,7 +43,6 @@ export const useProduceTrack = (streamId: string, track?: MediaStreamTrack) => {
         setProducer(producer);
       } else {
         await socket.request("closeProducer", { producerId: producer.id });
-        producer.close();
       }
     };
 

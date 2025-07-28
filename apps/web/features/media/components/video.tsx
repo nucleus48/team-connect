@@ -25,20 +25,14 @@ export default function Video({
   useEffect(() => {
     if (audioTrack) {
       stream.addTrack(audioTrack);
-      return () => {
-        stream.removeTrack(audioTrack);
-        audioTrack.stop();
-      };
+      return () => stream.removeTrack(audioTrack);
     }
   }, [stream, audioTrack]);
 
   useEffect(() => {
     if (videoTrack) {
       stream.addTrack(videoTrack);
-      return () => {
-        stream.removeTrack(videoTrack);
-        videoTrack.stop();
-      };
+      return () => stream.removeTrack(videoTrack);
     }
   }, [stream, videoTrack]);
 
