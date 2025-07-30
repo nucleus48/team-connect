@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import React, { useEffect, useMemo, useRef } from "react";
 
 export type VideoProps = React.ComponentProps<"video"> & {
+  containerClassName?: string;
   audioTrack?: MediaStreamTrack;
   videoTrack?: MediaStreamTrack;
 };
@@ -13,9 +14,13 @@ export default function Video({
   className,
   audioTrack,
   videoTrack,
+  containerClassName,
   ...props
 }: VideoProps) {
-  const stream = useMemo(() => new MediaStream(), []);
+  const stream = useMemo(() => {
+    return typeof window === "undefined" ? null : new MediaStream();
+  }, []);
+
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -23,28 +28,28 @@ export default function Video({
   }, [stream]);
 
   useEffect(() => {
-    if (audioTrack) {
+    if (audioTrack && stream) {
       stream.addTrack(audioTrack);
       return () => stream.removeTrack(audioTrack);
     }
   }, [stream, audioTrack]);
 
   useEffect(() => {
-    if (videoTrack) {
+    if (videoTrack && stream) {
       stream.addTrack(videoTrack);
       return () => stream.removeTrack(videoTrack);
     }
   }, [stream, videoTrack]);
 
   return (
-    <div>
+    <div className={cn("relative min-w-min", containerClassName)}>
       <video
         autoPlay
         ref={videoRef}
         className={cn(
+          "h-full rounded-2xl object-center",
+          !videoTrack && "opacity-0",
           className,
-          "size-full rounded-xl object-cover",
-          videoTrack ? "opacity-100" : "opacity-0",
         )}
         {...props}
       />

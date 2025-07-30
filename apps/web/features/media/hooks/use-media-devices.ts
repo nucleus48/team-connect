@@ -1,25 +1,59 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { usePermission } from "@/hooks/use-permission";
+import { useCallback, useEffect, useState } from "react";
 
 export const useMediaDevices = () => {
-  const [mediaDevices, setMediaDevices] = useState<MediaDeviceInfo[]>([]);
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const cameraPermission = usePermission("camera");
+  const microphonePermission = usePermission("microphone");
 
-  useEffect(() => {
-    async function enumerateDevices() {
-      const mediaDevices = await navigator.mediaDevices.enumerateDevices();
-      setMediaDevices(mediaDevices);
-    }
+  const enumerateDevices = useCallback(async (kind: MediaDeviceKind) => {
+    const mediaDevices = await navigator.mediaDevices.enumerateDevices();
+    const devices: Map<string, MediaDeviceInfo> = new Map();
 
-    enumerateDevices();
-    navigator.mediaDevices.addEventListener("devicechange", enumerateDevices);
+    mediaDevices.forEach((device) => {
+      if (devices.has(device.groupId)) return;
+      if (device.kind === kind && !!device.groupId) {
+        devices.set(device.groupId, device);
+      }
+    });
 
-    return () =>
-      navigator.mediaDevices.removeEventListener(
-        "devicechange",
-        enumerateDevices,
-      );
+    return Array.from(devices.values());
   }, []);
 
-  return mediaDevices;
+  useEffect(() => {
+    if (cameraPermission !== "granted") return;
+
+    const handleChange = async () => {
+      const devices = await enumerateDevices("videoinput");
+      setVideoDevices(devices);
+    };
+
+    handleChange();
+    navigator.mediaDevices.addEventListener("devicechange", handleChange);
+
+    return () => {
+      navigator.mediaDevices.removeEventListener("devicechange", handleChange);
+    };
+  }, [cameraPermission, enumerateDevices]);
+
+  useEffect(() => {
+    if (microphonePermission !== "granted") return;
+
+    const handleChange = async () => {
+      const devices = await enumerateDevices("audioinput");
+      setAudioDevices(devices);
+    };
+
+    handleChange();
+    navigator.mediaDevices.addEventListener("devicechange", handleChange);
+
+    return () => {
+      navigator.mediaDevices.removeEventListener("devicechange", handleChange);
+    };
+  }, [microphonePermission, enumerateDevices]);
+
+  return { audioDevices, videoDevices };
 };

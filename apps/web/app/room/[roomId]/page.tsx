@@ -11,20 +11,6 @@ export default async function RoomPage({
   const { roomId } = await params;
 
   return (
-    // <TransportProvider routerId={roomId}>
-    //   <DisplayMediaProvider>
-    //     <UserMediaProvider>
-    //       <main className="flex h-svh flex-col gap-8 p-8">
-    //         <MediaStreams />
-    //         <div className="bg-muted flex w-max self-center rounded-xl">
-    //           <ToggleVideo />
-    //           <ToggleAudio />
-    //           <ShareScreen />
-    //         </div>
-    //       </main>
-    //     </UserMediaProvider>
-    //   </DisplayMediaProvider>
-    // </TransportProvider>
     <SocketProvider roomId={roomId}>
       <UserMediaProvider>
         <DisplayMediaProvider>

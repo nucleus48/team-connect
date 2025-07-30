@@ -13,11 +13,8 @@ export const useConsumerProducer = (producer?: RemoteProducer) => {
   useEffect(() => {
     if (consumer) {
       return () => {
-        socket
-          .request("closeConsumer", { consumerId: consumer.id })
-          .then(() => {
-            consumer.close();
-          });
+        consumer.close();
+        socket.request("closeConsumer", { consumerId: consumer.id });
       };
     }
   }, [consumer, socket]);
@@ -28,13 +25,8 @@ export const useConsumerProducer = (producer?: RemoteProducer) => {
       return;
     }
 
-    if (
-      !consumerTransport ||
-      !device ||
-      !producer ||
-      consumer?.producerId === producer.id
-    )
-      return;
+    if (!consumerTransport || !device || !producer) return;
+    if (producer.id === consumer?.producerId) return;
 
     let isMounted = true;
 
@@ -54,8 +46,8 @@ export const useConsumerProducer = (producer?: RemoteProducer) => {
         setConsumer(consumer);
         await socket.request("resumeConsumer", { consumerId: consumer.id });
       } else {
-        await socket.request("closeConsumer", { consumerId: consumer.id });
         consumer.close();
+        await socket.request("closeConsumer", { consumerId: consumer.id });
       }
     };
 

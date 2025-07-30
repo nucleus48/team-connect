@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, use, useEffect, useReducer, useState } from "react";
+import { usePermission } from "@/hooks/use-permission";
+import { createContext, use, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useMediaDevices } from "../hooks/use-media-devices";
 
@@ -9,10 +10,16 @@ export type UserMediaContextValue = {
   isVideoEnabled: boolean;
   audioTrack?: MediaStreamTrack;
   videoTrack?: MediaStreamTrack;
-  toggleAudioEnabled: React.ActionDispatch<[]>;
-  toggleVideoEnabled: React.ActionDispatch<[]>;
-  setAudioDeviceId: React.Dispatch<React.SetStateAction<string | undefined>>;
-  setVideoDeviceId: React.Dispatch<React.SetStateAction<string | undefined>>;
+  setAudioDeviceGroupId: React.Dispatch<
+    React.SetStateAction<string | undefined>
+  >;
+  setVideoDeviceGroupId: React.Dispatch<
+    React.SetStateAction<string | undefined>
+  >;
+  setAudioEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  setVideoEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  enableAudioPermission: () => Promise<void>;
+  enableVideoPermission: () => Promise<void>;
 };
 
 const UserMediaContext = createContext<UserMediaContextValue | null>(null);
@@ -20,53 +27,110 @@ const UserMediaContext = createContext<UserMediaContextValue | null>(null);
 export default function UserMediaProvider({
   children,
 }: React.PropsWithChildren) {
-  const [audioDeviceId, setAudioDeviceId] = useState<string>();
-  const [videoDeviceId, setVideoDeviceId] = useState<string>();
+  const [isAudioEnabled, setAudioEnabled] = useState(true);
+  const [isVideoEnabled, setVideoEnabled] = useState(true);
   const [audioTrack, setAudioTrack] = useState<MediaStreamTrack>();
   const [videoTrack, setVideoTrack] = useState<MediaStreamTrack>();
-  const [isAudioEnabled, toggleAudioEnabled] = useReducer((t) => !t, true);
-  const [isVideoEnabled, toggleVideoEnabled] = useReducer((t) => !t, true);
+  const [audioDeviceGroupId, setAudioDeviceGroupId] = useState<string>();
+  const [videoDeviceGroupId, setVideoDeviceGroupId] = useState<string>();
 
-  const devices = useMediaDevices();
+  const cameraPermission = usePermission("camera");
+  const microphonePermission = usePermission("microphone");
+  const { audioDevices, videoDevices } = useMediaDevices();
 
   useEffect(() => () => void audioTrack?.stop(), [audioTrack]);
   useEffect(() => () => void videoTrack?.stop(), [videoTrack]);
 
+  const enableAudioPermission = useCallback(async () => {
+    if (microphonePermission !== "granted") {
+      toast.info("Microphone permission", {
+        id: "microphone-permission",
+        description: "We need to access your mic",
+        closeButton: true,
+        duration: Infinity,
+        action: {
+          label: "Grant",
+          onClick: () => {
+            toast.promise(
+              async () => {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                  audio: true,
+                });
+                stream.getTracks().forEach((track) => track.stop());
+                setAudioEnabled(true);
+              },
+              {
+                id: "promise-microphone-permission",
+                loading: "Microphone permission",
+                error: "Failed to access microphone",
+              },
+            );
+          },
+        },
+      });
+    }
+  }, [microphonePermission]);
+
+  const enableVideoPermission = useCallback(async () => {
+    if (cameraPermission !== "granted") {
+      toast.info("Camera permission", {
+        id: "camera-permission",
+        description: "We need to access your camera",
+        closeButton: true,
+        duration: Infinity,
+        action: {
+          label: "Grant",
+          onClick: () => {
+            toast.promise(
+              async () => {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                  video: true,
+                });
+                stream.getTracks().forEach((track) => track.stop());
+                setAudioEnabled(true);
+              },
+              {
+                id: "promise-camera-permission",
+                loading: "Camera permission",
+                error: "Failed to access camera",
+              },
+            );
+          },
+        },
+      });
+    }
+  }, [cameraPermission]);
+
   useEffect(() => {
     async function getUserVideoMedia() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { deviceId: videoDeviceId },
-        });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          groupId: videoDeviceGroupId,
+          height: { ideal: 720 },
+        },
+      });
 
-        setVideoTrack(stream.getVideoTracks()[0]);
-      } catch {
-        toast.error("Failed to get video device");
-      }
+      setVideoTrack(stream.getVideoTracks()[0]);
     }
 
-    if (isVideoEnabled) {
+    if (isVideoEnabled && cameraPermission === "granted") {
       getUserVideoMedia();
     } else {
       setVideoTrack(undefined);
     }
-  }, [isVideoEnabled, videoDeviceId]);
+  }, [isVideoEnabled, videoDeviceGroupId, cameraPermission]);
 
   useEffect(() => {
     async function getUserAudioMedia() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: { deviceId: audioDeviceId },
-        });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { groupId: audioDeviceGroupId },
+      });
 
-        setAudioTrack(stream.getAudioTracks()[0]);
-      } catch {
-        toast.error("Failed to get audio device");
-      }
+      setAudioTrack(stream.getAudioTracks()[0]);
     }
 
-    getUserAudioMedia();
-  }, [audioDeviceId]);
+    if (microphonePermission === "granted") getUserAudioMedia();
+  }, [audioDeviceGroupId, microphonePermission]);
 
   useEffect(() => {
     if (audioTrack) {
@@ -75,20 +139,22 @@ export default function UserMediaProvider({
   }, [isAudioEnabled, audioTrack]);
 
   useEffect(() => {
-    setAudioDeviceId((deviceId) => {
-      const existing =
-        !deviceId || devices.some((device) => device.deviceId === deviceId);
-
-      return existing ? deviceId : undefined;
+    setAudioDeviceGroupId((groupId) => {
+      const existing = audioDevices.some(
+        (device) => device.groupId === groupId,
+      );
+      return existing ? groupId : undefined;
     });
+  }, [audioDevices]);
 
-    setVideoDeviceId((deviceId) => {
-      const existing =
-        !deviceId || devices.some((device) => device.deviceId === deviceId);
-
-      return existing ? deviceId : undefined;
+  useEffect(() => {
+    setVideoDeviceGroupId((groupId) => {
+      const existing = videoDevices.some(
+        (device) => device.groupId === groupId,
+      );
+      return existing ? groupId : undefined;
     });
-  }, [devices]);
+  }, [videoDevices]);
 
   return (
     <UserMediaContext
@@ -97,10 +163,12 @@ export default function UserMediaProvider({
         videoTrack,
         isAudioEnabled,
         isVideoEnabled,
-        setAudioDeviceId,
-        setVideoDeviceId,
-        toggleAudioEnabled,
-        toggleVideoEnabled,
+        setAudioEnabled,
+        setVideoEnabled,
+        setAudioDeviceGroupId,
+        setVideoDeviceGroupId,
+        enableAudioPermission,
+        enableVideoPermission,
       }}
     >
       {children}

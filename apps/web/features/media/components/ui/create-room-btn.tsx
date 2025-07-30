@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { VideoIcon } from "lucide-react";
 import { useCallback, useTransition } from "react";
 import { toast } from "sonner";
-import { createRoom } from "../lib/actions";
+import { createRoom } from "../../lib/actions";
 
 export default function CreateRoomButton(
   props: React.ComponentProps<"button">,

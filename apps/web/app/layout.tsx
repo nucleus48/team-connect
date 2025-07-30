@@ -21,9 +21,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${interSans.variable} antialiased`}>
-        {children}
+    <html lang="en" className="h-full dark">
+      <body className={`${interSans.variable} h-full antialiased`}>
+        <main className="bg-background flex h-full flex-col">{children}</main>
         <Toaster />
       </body>
     </html>
