@@ -38,8 +38,16 @@ export default function UserMediaProvider({
   const microphonePermission = usePermission("microphone");
   const { audioDevices, videoDevices } = useMediaDevices();
 
-  useEffect(() => () => void audioTrack?.stop(), [audioTrack]);
-  useEffect(() => () => void videoTrack?.stop(), [videoTrack]);
+  useEffect(() => () => audioTrack?.stop(), [audioTrack]);
+  useEffect(() => {
+    videoTrack?.addEventListener("ended", () => {
+      location.reload();
+    });
+
+    return () => {
+      videoTrack?.stop();
+    };
+  }, [videoTrack]);
 
   const enableAudioPermission = useCallback(async () => {
     if (microphonePermission !== "granted") {
@@ -102,6 +110,8 @@ export default function UserMediaProvider({
   }, [cameraPermission]);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function getUserVideoMedia() {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -110,7 +120,13 @@ export default function UserMediaProvider({
         },
       });
 
-      setVideoTrack(stream.getVideoTracks()[0]);
+      const track = stream.getVideoTracks()[0];
+
+      if (isMounted) {
+        setVideoTrack(track);
+      } else {
+        track.stop();
+      }
     }
 
     if (isVideoEnabled && cameraPermission === "granted") {
@@ -118,6 +134,10 @@ export default function UserMediaProvider({
     } else {
       setVideoTrack(undefined);
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [isVideoEnabled, videoDeviceGroupId, cameraPermission]);
 
   useEffect(() => {

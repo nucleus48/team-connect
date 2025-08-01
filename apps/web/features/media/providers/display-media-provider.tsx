@@ -37,9 +37,6 @@ export default function DisplayMediaProvider({
     [isAudioEnabled, audioTrack],
   );
 
-  useEffect(() => () => void audioTrack?.stop(), [audioTrack]);
-  useEffect(() => () => void videoTrack?.stop(), [videoTrack]);
-
   const toggleAudioEnabled = useCallback(() => {
     setAudioEnabled((p) => !p);
   }, []);
@@ -65,6 +62,16 @@ export default function DisplayMediaProvider({
     setVideoTrack(undefined);
     setAudioEnabled(false);
   }, []);
+
+  useEffect(() => () => void audioTrack?.stop(), [audioTrack]);
+
+  useEffect(() => {
+    videoTrack?.addEventListener("ended", stopScreenSharing);
+
+    return () => {
+      videoTrack?.stop();
+    };
+  }, [videoTrack, stopScreenSharing]);
 
   return (
     <DisplayMediaContext
