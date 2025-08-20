@@ -1,19 +1,30 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { MicOffIcon } from "lucide-react";
 import React, { useEffect, useMemo, useRef } from "react";
 
-export type VideoProps = React.ComponentProps<"video"> & {
-  containerClassName?: string;
+export type VideoMode = "fullscreen" | "picture-in-picture" | "normal";
+
+export type VideoProps = Omit<
+  React.ComponentPropsWithoutRef<"video">,
+  "children"
+> & {
   audioTrack?: MediaStreamTrack;
   videoTrack?: MediaStreamTrack;
+  containerClassName?: string;
+  audioEnabled?: boolean;
+  mode?: VideoMode;
+  flip?: boolean;
 };
 
 export default function Video({
-  children,
+  flip,
   className,
   audioTrack,
   videoTrack,
+  audioEnabled,
+  mode = "normal",
   containerClassName,
   ...props
 }: VideoProps) {
@@ -42,18 +53,27 @@ export default function Video({
   }, [stream, videoTrack]);
 
   return (
-    <div className={cn("relative min-w-min", containerClassName)}>
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-2xl bg-black",
+        // pictureInPicture && "h-0",
+        containerClassName,
+      )}
+    >
       <video
         autoPlay
         ref={videoRef}
         className={cn(
-          "h-full rounded-2xl object-center",
+          "size-full",
           !videoTrack && "opacity-0",
+          flip && "rotate-y-180",
           className,
         )}
         {...props}
       />
-      {children}
+      {!audioEnabled && (
+        <MicOffIcon className="absolute top-2 right-2 size-4 text-white" />
+      )}
     </div>
   );
 }

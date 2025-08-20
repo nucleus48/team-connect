@@ -96,6 +96,24 @@ export class MediaGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @UseGuards(RoomRolesGuard)
+  @SubscribeMessage("pauseProducer")
+  handlePauseProducer(
+    @ConnectedSocket() client: Socket,
+    @MessageBody("producerId") producerId: string,
+  ) {
+    return this.mediaService.pauseProducer(client, producerId);
+  }
+
+  @UseGuards(RoomRolesGuard)
+  @SubscribeMessage("resumeProducer")
+  handleResumeProducer(
+    @ConnectedSocket() client: Socket,
+    @MessageBody("producerId") producerId: string,
+  ) {
+    return this.mediaService.resumeProducer(client, producerId);
+  }
+
+  @UseGuards(RoomRolesGuard)
   @SubscribeMessage("closeProducer")
   handleCloseProducer(
     @ConnectedSocket() client: Socket,

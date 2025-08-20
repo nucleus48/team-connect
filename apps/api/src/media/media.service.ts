@@ -200,6 +200,29 @@ export class MediaService {
     }
   }
 
+  async pauseProducer(client: Client & Pick<Socket, "to">, producerId: string) {
+    try {
+      await this.getPeer(client).pauseProducer(producerId);
+      client.to(client.roomId).emit("pauseProducer", producerId);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async resumeProducer(
+    client: Client & Pick<Socket, "to">,
+    producerId: string,
+  ) {
+    try {
+      await this.getPeer(client).resumeProducer(producerId);
+      client.to(client.roomId).emit("resumeProducer", producerId);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   closeProducer(client: Client & Pick<Socket, "to">, producerId: string) {
     try {
       this.getPeer(client).closeProducer(producerId);

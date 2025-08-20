@@ -6,9 +6,9 @@ import { KeyboardIcon } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className="h-full">
+    <>
       <MainHeader />
-      <div className="flex flex-wrap p-4">
+      <div className="flex h-full items-center justify-center p-4">
         <section className="space-y-4">
           <h1 className="text-3xl font-bold">Connect Your Team Instantly</h1>
           <p className="text-muted-foreground">
@@ -26,8 +26,7 @@ export default function Home() {
             </div>
           </div>
         </section>
-        <div></div>
       </div>
-    </div>
+    </>
   );
 }

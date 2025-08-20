@@ -19,16 +19,17 @@ export type JoinRoomProps = {
 
 export default function JoinRoom({ setJoined }: JoinRoomProps) {
   const [isLoading, startTransition] = useTransition();
-  const {
-    audioTrack,
-    videoTrack,
-    enableAudioPermission,
-    enableVideoPermission,
-    isVideoEnabled,
-  } = useUserMedia();
   const microphonePermission = usePermission("microphone");
   const cameraPermission = usePermission("camera");
   const socket = useSocket();
+  const {
+    audioTrack,
+    videoTrack,
+    isVideoEnabled,
+    isAudioEnabled,
+    enableAudioPermission,
+    enableVideoPermission,
+  } = useUserMedia();
 
   const handleJoinRoom = useCallback(async () => {
     const joined: boolean = await socket.request("joinRoom");
@@ -36,15 +37,17 @@ export default function JoinRoom({ setJoined }: JoinRoomProps) {
   }, [socket, setJoined]);
 
   return (
-    <div className="h-full overflow-hidden">
+    <>
       <MainHeader />
       <div className="flex h-full flex-col items-center justify-center gap-8 p-4">
         <div className="relative w-full max-w-[800px]">
           <Video
+            flip
             muted
             audioTrack={audioTrack}
             videoTrack={videoTrack}
-            containerClassName="size-full rotate-y-180 aspect-video bg-black rounded-2xl"
+            audioEnabled={isAudioEnabled}
+            containerClassName="size-full object-cover aspect-video border-2"
           />
 
           {!isVideoEnabled &&
@@ -84,11 +87,11 @@ export default function JoinRoom({ setJoined }: JoinRoomProps) {
         </div>
 
         <div className="flex flex-wrap justify-center gap-4">
-          <div className="bg-card flex items-center gap-2 rounded-full">
+          <div className="flex gap-2">
             <ToggleAudio className="size-9 [&_svg:not([class*='size-'])]:size-5" />
             <SelectAudioDevice className="w-56 rounded-full" />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex gap-2">
             <ToggleVideo className="size-9 [&_svg:not([class*='size-'])]:size-5" />
             <SelectVideoDevice className="w-56 rounded-full" />
           </div>
@@ -104,6 +107,6 @@ export default function JoinRoom({ setJoined }: JoinRoomProps) {
           <span>Join room</span>
         </Button>
       </div>
-    </div>
+    </>
   );
 }

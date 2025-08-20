@@ -21,5 +21,11 @@ export default function RemoteMedia({ remoteProducers }: RemoteMediaProps) {
   const audioTrack = useConsumerProducer(audioProducer);
   const videoTrack = useConsumerProducer(videoProducer);
 
-  return <Video audioTrack={audioTrack} videoTrack={videoTrack} />;
+  return (
+    <Video
+      audioTrack={audioTrack}
+      videoTrack={videoTrack}
+      audioEnabled={!audioProducer?.paused}
+    />
+  );
 }

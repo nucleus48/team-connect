@@ -6,7 +6,7 @@ export class MediaPeer {
   private readonly consumers: Map<string, types.Consumer> = new Map();
   private readonly producers: Map<
     string,
-    types.Producer<{ streamId: string }>
+    types.Producer<{ streamId: string; name: string }>
   > = new Map();
 
   constructor(
@@ -64,7 +64,7 @@ export class MediaPeer {
     const producer = await this.getTransport(transportId).produce({
       kind,
       rtpParameters,
-      appData: { streamId },
+      appData: { streamId, name: "Nucleus Erumagborie" },
     });
 
     this.producers.set(producer.id, producer);
@@ -81,9 +81,24 @@ export class MediaPeer {
       id: producer.id,
       kind: producer.kind,
       streamId: producer.appData.streamId,
+      paused: producer.paused,
     }));
 
     return producers;
+  }
+
+  async pauseProducer(producerId: string) {
+    if (this.producers.has(producerId)) {
+      const producer = this.producers.get(producerId)!;
+      await producer.pause();
+    }
+  }
+
+  async resumeProducer(producerId: string) {
+    if (this.producers.has(producerId)) {
+      const producer = this.producers.get(producerId)!;
+      await producer.resume();
+    }
   }
 
   closeProducer(producerId: string) {
@@ -112,6 +127,9 @@ export class MediaPeer {
     consumer.addListener("producerclose", () => {
       this.consumers.delete(consumer.id);
     });
+
+    consumer.addListener("producerpause", () => void consumer.pause());
+    consumer.addListener("producerresume", () => void consumer.resume());
 
     return consumer;
   }

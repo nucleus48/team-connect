@@ -5,7 +5,11 @@ import { useEffect, useState } from "react";
 import { useSocket } from "../providers/socket-provider";
 import { useTransport } from "../providers/transport-provider";
 
-export const useProduceTrack = (streamId: string, track?: MediaStreamTrack) => {
+export const useProduceTrack = (
+  streamId: string,
+  track?: MediaStreamTrack,
+  paused = false,
+) => {
   const [producer, setProducer] = useState<types.Producer>();
   const { producerTransport } = useTransport();
   const socket = useSocket();
@@ -24,6 +28,14 @@ export const useProduceTrack = (streamId: string, track?: MediaStreamTrack) => {
         producer.replaceTrack({ track });
       } else if (track?.readyState !== "live") {
         setProducer(undefined);
+      }
+
+      if (paused && !producer.paused) {
+        socket.request("pauseProducer", { producerId: producer.id });
+        producer.pause();
+      } else if (!paused && producer.paused) {
+        socket.request("resumeProducer", { producerId: producer.id });
+        producer.resume();
       }
 
       return;
@@ -51,5 +63,5 @@ export const useProduceTrack = (streamId: string, track?: MediaStreamTrack) => {
     return () => {
       isMounted = false;
     };
-  }, [producerTransport, streamId, track, socket, producer]);
+  }, [producerTransport, streamId, track, socket, producer, paused]);
 };

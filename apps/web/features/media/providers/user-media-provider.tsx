@@ -116,6 +116,7 @@ export default function UserMediaProvider({
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           groupId: videoDeviceGroupId,
+          width: { ideal: 1280 },
           height: { ideal: 720 },
         },
       });
@@ -151,12 +152,6 @@ export default function UserMediaProvider({
 
     if (microphonePermission === "granted") getUserAudioMedia();
   }, [audioDeviceGroupId, microphonePermission]);
-
-  useEffect(() => {
-    if (audioTrack) {
-      audioTrack.enabled = isAudioEnabled;
-    }
-  }, [isAudioEnabled, audioTrack]);
 
   useEffect(() => {
     setAudioDeviceGroupId((groupId) => {

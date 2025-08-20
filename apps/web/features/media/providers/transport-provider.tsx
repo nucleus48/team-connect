@@ -8,6 +8,7 @@ export type RemoteProducer = {
   id: string;
   streamId: string;
   kind: types.MediaKind;
+  paused?: boolean;
 };
 
 export type TransportContextValue = {
@@ -114,6 +115,30 @@ export default function TransportProvider({
         ]);
       };
 
+      const handlePauseProducer = (producerId: string) => {
+        setRemoteProducers((remoteProducers) =>
+          remoteProducers.map((remoteProducer) => {
+            if (remoteProducer.id === producerId) {
+              return { ...remoteProducer, paused: true };
+            }
+
+            return remoteProducer;
+          }),
+        );
+      };
+
+      const handleResumeProducer = (producerId: string) => {
+        setRemoteProducers((remoteProducers) =>
+          remoteProducers.map((remoteProducer) => {
+            if (remoteProducer.id === producerId) {
+              return { ...remoteProducer, paused: false };
+            }
+
+            return remoteProducer;
+          }),
+        );
+      };
+
       const handleCloseProducer = (producerId: string) => {
         setRemoteProducers((remoteProducers) =>
           remoteProducers.filter(
@@ -129,6 +154,8 @@ export default function TransportProvider({
         setConsumerTransport(consumerTransport);
 
         socket.on("newProducer", handleNewProducer);
+        socket.on("pauseProducer", handlePauseProducer);
+        socket.on("resumeProducer", handleResumeProducer);
         socket.on("closeProducer", handleCloseProducer);
       } else {
         producerTransport.close();
