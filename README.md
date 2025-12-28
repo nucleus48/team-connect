@@ -20,7 +20,7 @@ turborepo/
 - **Build System**: [Turborepo](https://turbo.build/repo) v2.7.2 - High-performance build system for JavaScript/TypeScript monorepos
 - **Package Manager**: [pnpm](https://pnpm.io/) v10.26.2 - Fast, disk space efficient package manager
 - **Language**: [TypeScript](https://www.typescriptlang.org/) v5.9.2 - Typed JavaScript
-- **Code Quality**: 
+- **Code Quality**:
   - ESLint v9.39.2 - Linting with flat config support
   - Prettier v3.7.4 - Code formatting with import organization and Tailwind CSS support
 
@@ -69,19 +69,23 @@ pnpm clean            # Remove node_modules and build artifacts
 The monorepo is configured with the following task pipeline (`turbo.json`):
 
 ### Build Task
+
 - **Depends on**: Builds of workspace dependencies (`^build`)
 - **Inputs**: Default Turbo inputs + `.env*` files
 - **Outputs**: `.next/**`, `dist/**`, `.expo/**` (cache excluded for `.next/cache`)
 
 ### Development Task
+
 - **Caching**: Disabled (always runs fresh)
 - **Persistent**: Keeps running in watch mode
 
 ### Lint & Type Check Tasks
+
 - **Depends on**: Respective tasks in workspace dependencies
 - **Caching**: Enabled for faster subsequent runs
 
 ### Clean Task
+
 - **Caching**: Disabled (always executes)
 
 ## TypeScript Configuration
@@ -91,7 +95,7 @@ The base TypeScript configuration (`tsconfig.base.json`) includes:
 - **Target**: ESNext with modern module resolution
 - **Strict Mode**: Enabled for maximum type safety
 - **Module Resolution**: Bundler-compatible
-- **Compiler Options**: 
+- **Compiler Options**:
   - JSON module support
   - Isolated modules for better build performance
   - No emit (handled by build tools)
@@ -116,6 +120,7 @@ The monorepo uses pnpm workspaces with the following structure:
 ### [@repo/eslint-config](./packages/eslint-config)
 
 Comprehensive ESLint configurations for multiple frameworks and environments:
+
 - Base configuration with TypeScript support
 - Next.js with React Compiler support
 - Expo/React Native
@@ -140,7 +145,7 @@ See the [eslint-config README](./packages/eslint-config/README.md) for detailed 
 ✅ **Type-safe** with strict TypeScript configuration  
 ✅ **Modern tooling** with flat ESLint configs and latest standards  
 ✅ **Consistent formatting** with Prettier and auto-import organization  
-✅ **Workspace protocol** for efficient local package linking  
+✅ **Workspace protocol** for efficient local package linking
 
 ## Environment Variables
 

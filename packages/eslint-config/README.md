@@ -8,14 +8,14 @@ This package provides pre-configured ESLint setups using the new [flat config fo
 
 ## Available Configurations
 
-| Configuration | Description | Use Case |
-|--------------|-------------|----------|
-| `base` | Base configuration with TypeScript + Prettier | Backend services, CLIs, shared utilities |
-| `next` | Next.js with Turbo and React Compiler | Next.js applications |
-| `expo` | Expo/React Native with Turbo | React Native mobile apps |
-| `nest` | NestJS with Turbo | NestJS backend applications |
-| `convex` | Convex backend functions | Convex serverless functions |
-| `react-internal` | React library development | Internal React components/libraries |
+| Configuration    | Description                                   | Use Case                                 |
+| ---------------- | --------------------------------------------- | ---------------------------------------- |
+| `base`           | Base configuration with TypeScript + Prettier | Backend services, CLIs, shared utilities |
+| `next`           | Next.js with Turbo and React Compiler         | Next.js applications                     |
+| `expo`           | Expo/React Native with Turbo                  | React Native mobile apps                 |
+| `nest`           | NestJS with Turbo                             | NestJS backend applications              |
+| `convex`         | Convex backend functions                      | Convex serverless functions              |
+| `react-internal` | React library development                     | Internal React components/libraries      |
 
 ## Installation
 
@@ -40,6 +40,7 @@ Add to your `package.json`:
 Ideal for backend services, Node.js applications, and shared utilities.
 
 **Features:**
+
 - ESLint recommended rules
 - TypeScript strict + stylistic type checking
 - Prettier integration
@@ -47,6 +48,7 @@ Ideal for backend services, Node.js applications, and shared utilities.
 - Project service for type-aware linting
 
 **eslint.config.mjs:**
+
 ```javascript
 import config from "@repo/eslint-config/base";
 
@@ -58,6 +60,7 @@ export default config;
 Optimized for Next.js applications with Web Vitals and React Compiler support.
 
 **Features:**
+
 - All base configuration features
 - Next.js core web vitals rules
 - Next.js TypeScript rules
@@ -65,6 +68,7 @@ Optimized for Next.js applications with Web Vitals and React Compiler support.
 - React Compiler recommended rules
 
 **eslint.config.mjs:**
+
 ```javascript
 import config from "@repo/eslint-config/next";
 
@@ -76,6 +80,7 @@ export default config;
 For Expo/React Native mobile applications.
 
 **Features:**
+
 - All base configuration features
 - Expo-specific rules and utilities
 - React and React Hooks rules
@@ -84,6 +89,7 @@ For Expo/React Native mobile applications.
 - Disabled `no-require-imports` for React Native compatibility
 
 **eslint.config.mjs:**
+
 ```javascript
 import config from "@repo/eslint-config/expo";
 
@@ -95,10 +101,12 @@ export default config;
 Minimal configuration for NestJS backend applications.
 
 **Features:**
+
 - All base configuration features
 - Turborepo optimization rules
 
 **eslint.config.mjs:**
+
 ```javascript
 import config from "@repo/eslint-config/nest";
 
@@ -110,11 +118,13 @@ export default config;
 For Convex serverless backend functions.
 
 **Features:**
+
 - All base configuration features
 - Convex-specific linting rules
 - Convex best practices
 
 **eslint.config.mjs:**
+
 ```javascript
 import config from "@repo/eslint-config/convex";
 
@@ -126,6 +136,7 @@ export default config;
 For developing internal React libraries and component packages.
 
 **Features:**
+
 - All base configuration features
 - React recommended rules
 - React Hooks latest rules
@@ -134,6 +145,7 @@ For developing internal React libraries and component packages.
 - Modern React (no JSX pragma required)
 
 **eslint.config.mjs:**
+
 ```javascript
 import config from "@repo/eslint-config/react-internal";
 
@@ -156,32 +168,38 @@ All configurations extend the base setup which includes:
 ### Framework-Specific Additions
 
 #### Next.js (`next.js`)
+
 - `eslint-config-next/core-web-vitals`
 - `eslint-config-next/typescript`
 - `eslint-config-turbo/flat`
 - `eslint-plugin-react-compiler`
 
 #### Expo (`expo.js`)
+
 - `eslint-config-expo/flat/utils/expo`
 - `eslint-config-turbo/flat`
 - React internal rules
 - Allows `require()` imports for React Native
 
 #### React Internal (`react-internal.js`)
+
 - `eslint-plugin-react` (flat recommended)
 - `eslint-plugin-react-hooks` (recommended-latest)
 - `eslint-plugin-react-compiler`
 - Disables legacy JSX pragma rules
 
 #### NestJS (`nest.js`)
+
 - `eslint-config-turbo/flat`
 
 #### Convex (`convex.js`)
+
 - `@convex-dev/eslint-plugin` (recommended)
 
 ## Dependencies
 
 ### Core Dependencies
+
 - `@eslint/js` - ESLint core rules
 - `typescript-eslint` - TypeScript linting
 - `eslint-plugin-prettier` - Prettier integration
@@ -189,6 +207,7 @@ All configurations extend the base setup which includes:
 - `eslint-config-flat-gitignore` - Gitignore support
 
 ### Framework-Specific
+
 - `eslint-config-next` - Next.js rules
 - `eslint-config-expo` - Expo/React Native rules
 - `eslint-config-turbo` - Turborepo optimization
@@ -205,15 +224,12 @@ You can extend any configuration with custom rules:
 import config from "@repo/eslint-config/base";
 import { defineConfig } from "eslint/config";
 
-export default defineConfig(
-  ...config,
-  {
-    rules: {
-      // Your custom rules
-      "no-console": "warn",
-    },
-  }
-);
+export default defineConfig(...config, {
+  rules: {
+    // Your custom rules
+    "no-console": "warn",
+  },
+});
 ```
 
 ## Type-Aware Linting
@@ -237,15 +253,18 @@ The configuration automatically uses `process.cwd()` to find your project's Type
 ## Troubleshooting
 
 ### Type-aware linting is slow
+
 - Ensure your `tsconfig.json` doesn't include unnecessary files
 - Use `skipLibCheck: true` in your tsconfig
 - Leverage Turborepo's caching for faster subsequent runs
 
 ### Rules conflicting with Prettier
+
 - All configs include `eslint-plugin-prettier/recommended` which should prevent conflicts
 - Run `pnpm format` after linting to ensure consistency
 
 ### Config not found
+
 - Ensure you're using the correct export path (e.g., `@repo/eslint-config/base`)
 - Check that the package is installed: `pnpm install`
 
