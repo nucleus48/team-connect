@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit } from "@nestjs/common";
-import mediasoup from "mediasoup";
+import * as mediasoup from "mediasoup";
 import os from "os";
 import { config } from "../config/mediasoup.config";
 

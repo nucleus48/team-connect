@@ -15,7 +15,7 @@ import { RouterService } from "../router/router.service";
 import { WsExceptionFilter } from "../ws-exception.filter";
 
 @UseFilters(new WsExceptionFilter())
-@WebSocketGateway(80, { namespace: "room", cors: { origin: "*" } })
+@WebSocketGateway({ namespace: "room", cors: { origin: "*" } })
 export class RoomGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {

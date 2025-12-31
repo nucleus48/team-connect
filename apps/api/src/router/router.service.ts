@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import mediasoup from "mediasoup";
+import * as mediasoup from "mediasoup";
 import { config } from "../config/mediasoup.config";
 import { Room } from "./room";
 import { RouterWorker } from "./router.worker";

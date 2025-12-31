@@ -1,9 +1,9 @@
-import { types } from "mediasoup";
+import * as mediasoup from "mediasoup";
 
 export const config = {
   // mediasoup Worker settings
   worker: {
-    logLevel: "warn" as types.WorkerLogLevel,
+    logLevel: "warn" as mediasoup.types.WorkerLogLevel,
     logTags: [
       "info",
       "ice",
@@ -16,7 +16,7 @@ export const config = {
       "score",
       "simulcast",
       "svc",
-    ] as types.WorkerLogTag[],
+    ] as mediasoup.types.WorkerLogTag[],
   },
   // mediasoup Router settings
   router: {
@@ -66,7 +66,7 @@ export const config = {
           "x-google-start-bitrate": 1000,
         },
       },
-    ] as types.RtpCodecCapability[],
+    ] as mediasoup.types.RtpCodecCapability[],
   },
   // mediasoup WebRtcTransport settings
   webRtcTransport: {

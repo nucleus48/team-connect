@@ -1,23 +1,23 @@
 import { Logger } from "@nestjs/common";
-import { types } from "mediasoup";
+import * as mediasoup from "mediasoup";
 import { config } from "../config/mediasoup.config";
 
 interface Peer {
   id: string;
   name: string;
-  transports: Map<string, types.WebRtcTransport>;
-  producers: Map<string, types.Producer>;
-  consumers: Map<string, types.Consumer>;
+  transports: Map<string, mediasoup.types.WebRtcTransport>;
+  producers: Map<string, mediasoup.types.Producer>;
+  consumers: Map<string, mediasoup.types.Consumer>;
 }
 
 export class Room {
   private readonly logger = new Logger(Room.name);
 
   public id: string;
-  public router: types.Router;
+  public router: mediasoup.types.Router;
   private peers = new Map<string, Peer>();
 
-  constructor(roomId: string, router: types.Router) {
+  constructor(roomId: string, router: mediasoup.types.Router) {
     this.id = roomId;
     this.router = router;
   }
@@ -78,7 +78,7 @@ export class Room {
   async connectWebRtcTransport(
     peerId: string,
     transportId: string,
-    dtlsParameters: types.DtlsParameters,
+    dtlsParameters: mediasoup.types.DtlsParameters,
   ) {
     const peer = this.getPeer(peerId);
     const transport = peer.transports.get(transportId);
@@ -99,8 +99,8 @@ export class Room {
   async produce(
     peerId: string,
     transportId: string,
-    kind: types.MediaKind,
-    rtpParameters: types.RtpParameters,
+    kind: mediasoup.types.MediaKind,
+    rtpParameters: mediasoup.types.RtpParameters,
   ) {
     const peer = this.getPeer(peerId);
     const transport = peer.transports.get(transportId);
@@ -125,7 +125,7 @@ export class Room {
     peerId: string,
     consumerTransportId: string,
     producerId: string,
-    rtpCapabilities: types.RtpCapabilities,
+    rtpCapabilities: mediasoup.types.RtpCapabilities,
   ) {
     const peer = this.getPeer(peerId);
     const consumerTransport = peer.transports.get(consumerTransportId);
