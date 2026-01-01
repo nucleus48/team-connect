@@ -64,6 +64,16 @@ export class RouterService {
     return await room.produce(peerId, transportId, kind, rtpParameters);
   }
 
+  async pauseProducer(roomId: string, peerId: string, producerId: string) {
+    const room = this.getRoom(roomId);
+    await room.pauseProducer(peerId, producerId);
+  }
+
+  async resumeProducer(roomId: string, peerId: string, producerId: string) {
+    const room = this.getRoom(roomId);
+    await room.resumeProducer(peerId, producerId);
+  }
+
   async consume(
     roomId: string,
     peerId: string,
@@ -78,6 +88,16 @@ export class RouterService {
       producerId,
       rtpCapabilities,
     );
+  }
+
+  async pauseConsumer(roomId: string, peerId: string, consumerId: string) {
+    const room = this.getRoom(roomId);
+    await room.pauseConsumer(peerId, consumerId);
+  }
+
+  async resumeConsumer(roomId: string, peerId: string, consumerId: string) {
+    const room = this.getRoom(roomId);
+    await room.resumeConsumer(peerId, consumerId);
   }
 
   closeProducer(roomId: string, peerId: string, producerId: string) {

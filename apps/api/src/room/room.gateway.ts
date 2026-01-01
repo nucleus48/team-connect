@@ -131,6 +131,32 @@ export class RoomGateway
     return producerId;
   }
 
+  @SubscribeMessage("pauseProducer")
+  async pauseProducer(
+    @MessageBody()
+    data: {
+      roomId: string;
+      producerId: string;
+    },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { roomId, producerId } = data;
+    await this.routerService.pauseProducer(roomId, client.id, producerId);
+  }
+
+  @SubscribeMessage("resumeProducer")
+  async resumeProducer(
+    @MessageBody()
+    data: {
+      roomId: string;
+      producerId: string;
+    },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { roomId, producerId } = data;
+    await this.routerService.resumeProducer(roomId, client.id, producerId);
+  }
+
   @SubscribeMessage("consume")
   async consume(
     @MessageBody()
@@ -150,6 +176,32 @@ export class RoomGateway
       producerId,
       rtpCapabilities,
     );
+  }
+
+  @SubscribeMessage("pauseConsumer")
+  async pauseConsumer(
+    @MessageBody()
+    data: {
+      roomId: string;
+      consumerId: string;
+    },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { roomId, consumerId } = data;
+    await this.routerService.pauseConsumer(roomId, client.id, consumerId);
+  }
+
+  @SubscribeMessage("resumeConsumer")
+  async resumeConsumer(
+    @MessageBody()
+    data: {
+      roomId: string;
+      consumerId: string;
+    },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { roomId, consumerId } = data;
+    await this.routerService.resumeConsumer(roomId, client.id, consumerId);
   }
 
   @SubscribeMessage("disconnect")

@@ -121,6 +121,74 @@ export class Room {
     return producer.id;
   }
 
+  async pauseProducer(peerId: string, producerId: string) {
+    const peer = this.getPeer(peerId);
+    const producer = peer.producers.get(producerId);
+
+    if (!producer) {
+      throw new Error(
+        `Producer ${producerId} not found for peer ${peerId} in room ${this.id}`,
+      );
+    }
+
+    await producer.pause();
+
+    this.logger.log(
+      `Producer ${producerId} paused for peer ${peerId} in room ${this.id}`,
+    );
+  }
+
+  async resumeProducer(peerId: string, producerId: string) {
+    const peer = this.getPeer(peerId);
+    const producer = peer.producers.get(producerId);
+
+    if (!producer) {
+      throw new Error(
+        `Producer ${producerId} not found for peer ${peerId} in room ${this.id}`,
+      );
+    }
+
+    await producer.resume();
+
+    this.logger.log(
+      `Producer ${producerId} resumed for peer ${peerId} in room ${this.id}`,
+    );
+  }
+
+  async pauseConsumer(peerId: string, consumerId: string) {
+    const peer = this.getPeer(peerId);
+    const consumer = peer.consumers.get(consumerId);
+
+    if (!consumer) {
+      throw new Error(
+        `Consumer ${consumerId} not found for peer ${peerId} in room ${this.id}`,
+      );
+    }
+
+    await consumer.pause();
+
+    this.logger.log(
+      `Consumer ${consumerId} paused for peer ${peerId} in room ${this.id}`,
+    );
+  }
+
+  async resumeConsumer(peerId: string, consumerId: string) {
+    const peer = this.getPeer(peerId);
+    const consumer = peer.consumers.get(consumerId);
+
+    if (!consumer) {
+      throw new Error(
+        `Consumer ${consumerId} not found for peer ${peerId} in room ${this.id}`,
+      );
+    }
+
+    await consumer.resume();
+
+    this.logger.log(
+      `Consumer ${consumerId} resumed for peer ${peerId} in room ${this.id}`,
+    );
+  }
+
   async consume(
     peerId: string,
     consumerTransportId: string,
