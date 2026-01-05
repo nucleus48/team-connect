@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { usePermission } from "./use-permission";
 
 interface MediaDevicesState {
   cameras: MediaDeviceInfo[];
   microphones: MediaDeviceInfo[];
   speakers: MediaDeviceInfo[];
-  isLoading: boolean;
 }
 
 export function useMediaDevices() {
@@ -15,8 +14,27 @@ export function useMediaDevices() {
     cameras: [],
     speakers: [],
     microphones: [],
-    isLoading: true,
   });
+
+  const enumerateDevices = useEffectEvent(
+    (kind: MediaDeviceKind, mediaDevices: MediaDeviceInfo[]) => {
+      const devices = new Map<string, MediaDeviceInfo>();
+
+      mediaDevices.forEach((device) => {
+        if (devices.has(device.groupId)) return;
+        if (
+          device.kind === kind &&
+          device.groupId &&
+          device.label &&
+          device.deviceId
+        ) {
+          devices.set(device.groupId, device);
+        }
+      });
+
+      return Array.from(devices.values());
+    },
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -32,26 +50,19 @@ export function useMediaDevices() {
 
       try {
         const allDevices = await navigator.mediaDevices.enumerateDevices();
-        const cameras = allDevices.filter(
-          (d) => d.kind === "videoinput" && d.deviceId && d.label,
-        );
-        const speakers = allDevices.filter(
-          (d) => d.kind === "audiooutput" && d.deviceId && d.label,
-        );
-        const microphones = allDevices.filter(
-          (d) => d.kind === "audioinput" && d.deviceId && d.label,
-        );
+        const cameras = enumerateDevices("videoinput", allDevices);
+        const speakers = enumerateDevices("audiooutput", allDevices);
+        const microphones = enumerateDevices("audioinput", allDevices);
 
         if (!controller.signal.aborted) {
           setDevices({
             cameras,
             speakers,
             microphones,
-            isLoading: false,
           });
         }
       } catch {
-        setDevices((prev) => ({ ...prev, isLoading: false }));
+        void 0;
       }
     };
 

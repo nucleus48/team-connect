@@ -1,5 +1,6 @@
 "use client";
 
+import { useDisplayMedia } from "@/hooks/use-display-media";
 import { useMediaDevices } from "@/hooks/use-media-devices";
 import { useUserMedia } from "@/hooks/use-user-media";
 import {
@@ -16,10 +17,9 @@ interface LocalMediaContextValue {
   isVideoMuted: boolean;
   toggleAudio: () => void;
   toggleVideo: () => void;
-  cameras: MediaDeviceInfo[];
-  speakers: MediaDeviceInfo[];
-  microphones: MediaDeviceInfo[];
-  refetchStream: () => Promise<void>;
+  refetchMedia: () => Promise<void>;
+  shareScreen: () => Promise<void>;
+  stopScreenSharing: () => void;
   selectedAudioInput?: string;
   selectedVideoInput?: string;
   selectedAudioOutput?: string;
@@ -33,21 +33,22 @@ interface LocalMediaContextValue {
     React.SetStateAction<string | undefined>
   >;
   videoRef: React.RefObject<HTMLVideoElement | null>;
+  displayVideoRef: React.RefObject<HTMLVideoElement | null>;
 }
 
 const LocalMediaContext = createContext<LocalMediaContextValue>({
-  cameras: [],
-  speakers: [],
-  microphones: [],
   isAudioMuted: false,
   isVideoMuted: false,
   toggleAudio: () => void 0,
   toggleVideo: () => void 0,
   videoRef: { current: null },
-  refetchStream: () => Promise.resolve(),
+  displayVideoRef: { current: null },
   setSelectedAudioInput: () => void 0,
   setSelectedVideoInput: () => void 0,
   setSelectedAudioOutput: () => void 0,
+  refetchMedia: () => Promise.resolve(),
+  shareScreen: () => Promise.resolve(),
+  stopScreenSharing: () => void 0,
 });
 
 export default function LocalMediaProvider({
@@ -63,14 +64,22 @@ export default function LocalMediaProvider({
     toggleVideo,
     isAudioMuted,
     isVideoMuted,
-    refetchStream,
+    refetchMedia,
   } = useUserMedia({
     audioDeviceId: selectedAudioInput,
     videoDeviceId: selectedVideoInput,
   });
 
+  const {
+    stream: displayStream,
+    startDisplayMedia,
+    stopDisplayMedia,
+  } = useDisplayMedia();
+
   const { cameras, microphones, speakers } = useMediaDevices();
+
   const videoRef = useRef<HTMLVideoElement>(null);
+  const displayVideoRef = useRef<HTMLVideoElement>(null);
 
   const selectDevices = useEffectEvent(() => {
     if (!selectedAudioInput && microphones.length > 0) {
@@ -94,24 +103,30 @@ export default function LocalMediaProvider({
     }
   }, [stream]);
 
+  useEffect(() => {
+    if (displayVideoRef.current && displayStream) {
+      displayVideoRef.current.srcObject = displayStream;
+    }
+  }, [displayStream]);
+
   return (
     <LocalMediaContext
       value={{
-        cameras,
-        speakers,
         videoRef,
-        microphones,
+        displayVideoRef,
         toggleAudio,
         toggleVideo,
         isAudioMuted,
         isVideoMuted,
-        refetchStream,
+        refetchMedia,
         selectedAudioInput,
         selectedVideoInput,
         selectedAudioOutput,
         setSelectedAudioInput,
         setSelectedVideoInput,
         setSelectedAudioOutput,
+        shareScreen: startDisplayMedia,
+        stopScreenSharing: stopDisplayMedia,
       }}
     >
       {children}

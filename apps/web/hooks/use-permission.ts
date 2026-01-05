@@ -10,8 +10,8 @@ const permissionToast: Record<
     description: "Please grant camera permission.",
   },
   microphone: {
-    title: "Microphone Permission",
-    description: "Please grant microphone permission.",
+    title: "Audio Permission",
+    description: "Please grant audio permission.",
   },
 };
 

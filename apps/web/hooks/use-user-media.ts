@@ -28,8 +28,8 @@ export function useUserMedia(options: UseMediaStreamOptions) {
   const [state, setState] = useState<MediaStreamState>({
     stream: null,
     error: null,
-    isAudioMuted: false,
-    isVideoMuted: false,
+    isAudioMuted: true,
+    isVideoMuted: true,
     isLoading: true,
   });
 
@@ -138,10 +138,5 @@ export function useUserMedia(options: UseMediaStreamOptions) {
     }
   };
 
-  return {
-    ...state,
-    toggleAudio,
-    toggleVideo,
-    refetchStream: getUserMedia,
-  };
+  return { ...state, refetchMedia: getUserMedia, toggleAudio, toggleVideo };
 }

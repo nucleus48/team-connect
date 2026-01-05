@@ -8,6 +8,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useMediaDevices } from "@/hooks/use-media-devices";
+import { useLocalMedia } from "@/providers/local-media-provider";
+import { useRoom } from "@/providers/room-provider";
 import {
   Camera01Icon,
   CameraOff01Icon,
@@ -16,21 +19,17 @@ import {
   Speaker01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useLocalMedia } from "./local-media-provider";
-import { useRoom } from "./room-provider";
 
 export default function LobbyState() {
   const { setRoomState } = useRoom();
+  const { cameras, microphones, speakers } = useMediaDevices();
   const {
-    cameras,
-    speakers,
-    microphones,
     videoRef,
     isAudioMuted,
     isVideoMuted,
     toggleAudio,
     toggleVideo,
-    refetchStream,
+    refetchMedia,
     selectedAudioInput,
     selectedAudioOutput,
     selectedVideoInput,
@@ -105,7 +104,7 @@ export default function LobbyState() {
               onValueChange={(val) => {
                 setSelectedAudioInput(val);
                 setTimeout(() => {
-                  void refetchStream();
+                  void refetchMedia();
                 }, 100);
               }}
             >
@@ -155,7 +154,7 @@ export default function LobbyState() {
               onValueChange={(val) => {
                 setSelectedVideoInput(val);
                 setTimeout(() => {
-                  void refetchStream();
+                  void refetchMedia();
                 }, 100);
               }}
             >

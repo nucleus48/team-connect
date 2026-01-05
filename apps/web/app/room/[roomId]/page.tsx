@@ -1,6 +1,5 @@
-import LocalMediaProvider from "./components/local-media-provider";
-import Room from "./components/room";
-import RoomProvider from "./components/room-provider";
+import LocalMediaProvider from "@/providers/local-media-provider";
+import { Room } from "@/providers/room-provider";
 
 export default async function RoomPage({
   params,
@@ -9,9 +8,7 @@ export default async function RoomPage({
 
   return (
     <LocalMediaProvider>
-      <RoomProvider roomId={roomId}>
-        <Room />
-      </RoomProvider>
+      <Room roomId={roomId} />
     </LocalMediaProvider>
   );
 }
