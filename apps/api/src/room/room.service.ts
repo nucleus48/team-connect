@@ -1,4 +1,4 @@
-import { DbService } from "@/db/db.module";
+import { DB_INSTANCE } from "@/db/db";
 import { roomParticipantTable, roomTable } from "@/db/schema";
 import { Inject, Injectable } from "@nestjs/common";
 import { eq } from "drizzle-orm";
@@ -6,7 +6,7 @@ import { v7 as uuid } from "uuid";
 
 @Injectable()
 export class RoomService {
-  constructor(@Inject(DbService) private dbService: DbService) {}
+  constructor(@Inject(DB_INSTANCE) private dbService: DB_INSTANCE) {}
 
   async create(userId: string) {
     const roomId = uuid();
