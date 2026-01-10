@@ -1,4 +1,4 @@
-import { Logger, UseFilters } from "@nestjs/common";
+import { Logger, UseFilters, UseGuards } from "@nestjs/common";
 import {
   ConnectedSocket,
   MessageBody,
@@ -7,21 +7,31 @@ import {
   OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
-  WebSocketServer,
 } from "@nestjs/websockets";
+import { AuthGuard } from "@thallesp/nestjs-better-auth";
 import * as mediasoup from "mediasoup";
-import { Server, Socket } from "socket.io";
+import { loadEnvFile } from "process";
+import { Socket } from "socket.io";
 import { RouterService } from "../router/router.service";
 import { WsExceptionFilter } from "../ws-exception.filter";
+import { RoomGuard } from "./room.guard";
+
+loadEnvFile();
 
 @UseFilters(new WsExceptionFilter())
-@WebSocketGateway({ namespace: "room", cors: { origin: "*" } })
+@WebSocketGateway({
+  namespace: "room",
+  cookie: true,
+  cors: {
+    origin: [process.env.SITE_URL],
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+})
+@UseGuards(AuthGuard, RoomGuard)
 export class RoomGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
-  @WebSocketServer()
-  server!: Server;
-
   private readonly logger = new Logger(RoomGateway.name);
 
   constructor(private routerService: RouterService) {}
@@ -39,29 +49,14 @@ export class RoomGateway
     // TODO: Handle peer removal from rooms and close producers/consumers
   }
 
-  @SubscribeMessage("createRoom")
-  async createRoom(
-    @MessageBody() data: { roomId: string },
-    @ConnectedSocket() client: Socket,
-  ) {
-    const { roomId } = data;
-    await this.routerService.createRoom(roomId);
-    this.logger.log(`Room ${roomId} created by ${client.id}`);
-    return roomId;
-  }
-
   @SubscribeMessage("joinRoom")
-  async joinRoom(
-    @MessageBody() data: { roomId: string; name: string },
-    @ConnectedSocket() client: Socket,
-  ) {
-    const { roomId, name } = data;
-    this.routerService.addPeerToRoom(roomId, client.id, name);
-    await client.join(roomId);
-    this.logger.log(`Client ${client.id} (${name}) joined room ${roomId}`);
+  async joinRoom(@ConnectedSocket() client: Socket) {
+    await this.routerService.addPeerToRoom(client.roomId, client.id);
+    await client.join(client.roomId);
+    this.logger.log(`Client ${client.id} joined room ${client.roomId}`);
 
-    const otherProducers = this.routerService.getOtherProducers(
-      roomId,
+    const otherProducers = await this.routerService.getOtherProducers(
+      client.roomId,
       client.id,
     );
 
@@ -69,36 +64,35 @@ export class RoomGateway
     if (otherProducers.length > 0) {
       client.emit("newProducers", otherProducers);
     }
+
+    return true;
   }
 
   @SubscribeMessage("getRouterRtpCapabilities")
-  getRouterRtpCapabilities(@MessageBody() data: { roomId: string }) {
-    const { roomId } = data;
-    return this.routerService.getRouterRtpCapabilities(roomId);
+  getRouterRtpCapabilities(@ConnectedSocket() client: Socket) {
+    return this.routerService.getRouterRtpCapabilities(client.roomId);
   }
 
   @SubscribeMessage("createWebRtcTransport")
-  async createWebRtcTransport(
-    @MessageBody() data: { roomId: string },
-    @ConnectedSocket() client: Socket,
-  ) {
-    const { roomId } = data;
-    return await this.routerService.createWebRtcTransport(roomId, client.id);
+  async createWebRtcTransport(@ConnectedSocket() client: Socket) {
+    return await this.routerService.createWebRtcTransport(
+      client.roomId,
+      client.id,
+    );
   }
 
   @SubscribeMessage("connectWebRtcTransport")
   async connectWebRtcTransport(
     @MessageBody()
     data: {
-      roomId: string;
       transportId: string;
       dtlsParameters: mediasoup.types.DtlsParameters;
     },
     @ConnectedSocket() client: Socket,
   ) {
-    const { roomId, transportId, dtlsParameters } = data;
+    const { transportId, dtlsParameters } = data;
     await this.routerService.connectWebRtcTransport(
-      roomId,
+      client.roomId,
       client.id,
       transportId,
       dtlsParameters,
@@ -109,16 +103,15 @@ export class RoomGateway
   async produce(
     @MessageBody()
     data: {
-      roomId: string;
       transportId: string;
       kind: mediasoup.types.MediaKind;
       rtpParameters: mediasoup.types.RtpParameters;
     },
     @ConnectedSocket() client: Socket,
   ) {
-    const { roomId, transportId, kind, rtpParameters } = data;
+    const { transportId, kind, rtpParameters } = data;
     const producerId = await this.routerService.produce(
-      roomId,
+      client.roomId,
       client.id,
       transportId,
       kind,
@@ -126,7 +119,9 @@ export class RoomGateway
     );
 
     // Notify other peers in the room about the new producer
-    client.to(roomId).emit("newProducer", { peerId: client.id, producerId });
+    client
+      .to(client.roomId)
+      .emit("newProducer", { peerId: client.id, producerId });
 
     return producerId;
   }
@@ -135,42 +130,47 @@ export class RoomGateway
   async pauseProducer(
     @MessageBody()
     data: {
-      roomId: string;
       producerId: string;
     },
     @ConnectedSocket() client: Socket,
   ) {
-    const { roomId, producerId } = data;
-    await this.routerService.pauseProducer(roomId, client.id, producerId);
+    const { producerId } = data;
+    await this.routerService.pauseProducer(
+      client.roomId,
+      client.id,
+      producerId,
+    );
   }
 
   @SubscribeMessage("resumeProducer")
   async resumeProducer(
     @MessageBody()
     data: {
-      roomId: string;
       producerId: string;
     },
     @ConnectedSocket() client: Socket,
   ) {
-    const { roomId, producerId } = data;
-    await this.routerService.resumeProducer(roomId, client.id, producerId);
+    const { producerId } = data;
+    await this.routerService.resumeProducer(
+      client.roomId,
+      client.id,
+      producerId,
+    );
   }
 
   @SubscribeMessage("consume")
   async consume(
     @MessageBody()
     data: {
-      roomId: string;
       consumerTransportId: string;
       producerId: string;
       rtpCapabilities: mediasoup.types.RtpCapabilities;
     },
     @ConnectedSocket() client: Socket,
   ) {
-    const { roomId, consumerTransportId, producerId, rtpCapabilities } = data;
+    const { consumerTransportId, producerId, rtpCapabilities } = data;
     return await this.routerService.consume(
-      roomId,
+      client.roomId,
       client.id,
       consumerTransportId,
       producerId,
@@ -182,38 +182,31 @@ export class RoomGateway
   async pauseConsumer(
     @MessageBody()
     data: {
-      roomId: string;
       consumerId: string;
     },
     @ConnectedSocket() client: Socket,
   ) {
-    const { roomId, consumerId } = data;
-    await this.routerService.pauseConsumer(roomId, client.id, consumerId);
+    const { consumerId } = data;
+    await this.routerService.pauseConsumer(
+      client.roomId,
+      client.id,
+      consumerId,
+    );
   }
 
   @SubscribeMessage("resumeConsumer")
   async resumeConsumer(
     @MessageBody()
     data: {
-      roomId: string;
       consumerId: string;
     },
     @ConnectedSocket() client: Socket,
   ) {
-    const { roomId, consumerId } = data;
-    await this.routerService.resumeConsumer(roomId, client.id, consumerId);
-  }
-
-  @SubscribeMessage("disconnect")
-  async disconnect(
-    @MessageBody() data: { roomId: string },
-    @ConnectedSocket() client: Socket,
-  ) {
-    const { roomId } = data;
-    // TODO: Implement proper disconnection logic to remove peer from room and close all associated mediasoup resources
-    this.logger.log(
-      `Client ${client.id} explicitly disconnected from room ${roomId}`,
+    const { consumerId } = data;
+    await this.routerService.resumeConsumer(
+      client.roomId,
+      client.id,
+      consumerId,
     );
-    await client.leave(roomId);
   }
 }

@@ -15,11 +15,14 @@ import { RoomModule } from "./room/room.module";
       useFactory: (db: DB_INSTANCE, configService: ConfigService) => ({
         auth: getAuthInstance({
           db,
-          trustedOrigins: [configService.getOrThrow<string>("SITE_URL")],
-          githubClientId: configService.getOrThrow<string>("GITHUB_CLIENT_ID"),
-          githubClientSecret: configService.getOrThrow<string>(
-            "GITHUB_CLIENT_SECRET",
-          ),
+          env: {
+            SITE_URL: configService.getOrThrow<string>("SITE_URL"),
+            GITHUB_CLIENT_ID:
+              configService.getOrThrow<string>("GITHUB_CLIENT_ID"),
+            GITHUB_CLIENT_SECRET: configService.getOrThrow<string>(
+              "GITHUB_CLIENT_SECRET",
+            ),
+          },
         }),
       }),
     }),

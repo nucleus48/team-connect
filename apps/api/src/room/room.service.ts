@@ -1,7 +1,7 @@
 import { DB_INSTANCE } from "@/db/db";
 import { roomParticipantTable, roomTable } from "@/db/schema";
-import { Inject, Injectable } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import { and, eq } from "drizzle-orm";
 import { v7 as uuid } from "uuid";
 
 @Injectable()
@@ -26,6 +26,12 @@ export class RoomService {
   }
 
   async join(roomId: string, userId: string) {
+    const roomExist = await this.getRoomById(roomId);
+
+    if (!roomExist) {
+      throw new BadRequestException("Room not found");
+    }
+
     const participantId = uuid();
 
     await this.dbService.insert(roomParticipantTable).values({
@@ -46,10 +52,14 @@ export class RoomService {
     return room;
   }
 
-  async getParticipantById(id: string) {
+  async getRoomParticipant(roomId: string, userId: string) {
     const participant =
       await this.dbService.query.roomParticipantTable.findFirst({
-        where: () => eq(roomParticipantTable.id, id),
+        where: () =>
+          and(
+            eq(roomParticipantTable.roomId, roomId),
+            eq(roomParticipantTable.userId, userId),
+          ),
       });
 
     return participant;

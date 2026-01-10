@@ -4,7 +4,6 @@ import { config } from "../config/mediasoup.config";
 
 interface Peer {
   id: string;
-  name: string;
   transports: Map<string, mediasoup.types.WebRtcTransport>;
   producers: Map<string, mediasoup.types.Producer>;
   consumers: Map<string, mediasoup.types.Consumer>;
@@ -22,16 +21,15 @@ export class Room {
     this.router = router;
   }
 
-  addPeer(peerId: string, name: string) {
+  addPeer(peerId: string) {
     this.peers.set(peerId, {
       id: peerId,
-      name,
       transports: new Map(),
       producers: new Map(),
       consumers: new Map(),
     });
 
-    this.logger.log(`Peer ${name} (${peerId}) joined room ${this.id}`);
+    this.logger.log(`Peer ${peerId} joined room ${this.id}`);
   }
 
   getPeer(peerId: string) {

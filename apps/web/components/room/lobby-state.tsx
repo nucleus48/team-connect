@@ -14,14 +14,17 @@ import { useRoom } from "@/providers/room-provider";
 import {
   Camera01Icon,
   CameraOff01Icon,
+  Loading03Icon,
   Mic01Icon,
   MicOff01Icon,
   Speaker01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { useTransition } from "react";
 
 export default function LobbyState() {
-  const { setRoomState } = useRoom();
+  const { joinRoom } = useRoom();
+  const [isJoiningRoom, startTransition] = useTransition();
   const { cameras, microphones, speakers } = useMediaDevices();
   const {
     videoRef,
@@ -192,9 +195,16 @@ export default function LobbyState() {
               size="lg"
               className="h-12 w-full rounded-full text-sm"
               onClick={() => {
-                setRoomState("joined");
+                startTransition(joinRoom);
               }}
             >
+              {isJoiningRoom && (
+                <HugeiconsIcon
+                  strokeWidth={2}
+                  className="h-5 w-5 animate-spin"
+                  icon={Loading03Icon}
+                />
+              )}
               Join now
             </Button>
           </div>

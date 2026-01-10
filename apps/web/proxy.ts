@@ -9,9 +9,13 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
+  if (pathname.startsWith("/room") && !sessionCookie) {
+    return NextResponse.redirect(new URL("/auth", request.url));
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/auth"],
+  matcher: ["/auth", "/room/(.+)"],
 };

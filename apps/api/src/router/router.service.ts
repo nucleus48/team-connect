@@ -10,36 +10,39 @@ export class RouterService {
 
   constructor(private routerWorker: RouterWorker) {}
 
-  async createRoom(roomId: string) {
+  private async createRoom(roomId: string) {
     const worker = this.routerWorker.worker;
     const router = await worker.createRouter({
       mediaCodecs: config.router.mediaCodecs,
     });
     const room = new Room(roomId, router);
     this.rooms.set(roomId, room);
-    return roomId;
-  }
-
-  getRoom(roomId: string) {
-    const room = this.rooms.get(roomId);
-    if (!room) {
-      throw new Error(`Room ${roomId} not found`);
-    }
     return room;
   }
 
-  addPeerToRoom(roomId: string, peerId: string, name: string) {
-    const room = this.getRoom(roomId);
-    room.addPeer(peerId, name);
+  async getRoom(roomId: string) {
+    const room = this.rooms.get(roomId);
+
+    if (!room) {
+      const room = await this.createRoom(roomId);
+      return room;
+    }
+
+    return room;
   }
 
-  getRouterRtpCapabilities(roomId: string) {
-    const room = this.getRoom(roomId);
+  async addPeerToRoom(roomId: string, peerId: string) {
+    const room = await this.getRoom(roomId);
+    room.addPeer(peerId);
+  }
+
+  async getRouterRtpCapabilities(roomId: string) {
+    const room = await this.getRoom(roomId);
     return room.getRouterRtpCapabilities();
   }
 
   async createWebRtcTransport(roomId: string, peerId: string) {
-    const room = this.getRoom(roomId);
+    const room = await this.getRoom(roomId);
     return await room.createWebRtcTransport(peerId);
   }
 
@@ -49,7 +52,7 @@ export class RouterService {
     transportId: string,
     dtlsParameters: mediasoup.types.DtlsParameters,
   ) {
-    const room = this.getRoom(roomId);
+    const room = await this.getRoom(roomId);
     await room.connectWebRtcTransport(peerId, transportId, dtlsParameters);
   }
 
@@ -60,17 +63,17 @@ export class RouterService {
     kind: mediasoup.types.MediaKind,
     rtpParameters: mediasoup.types.RtpParameters,
   ) {
-    const room = this.getRoom(roomId);
+    const room = await this.getRoom(roomId);
     return await room.produce(peerId, transportId, kind, rtpParameters);
   }
 
   async pauseProducer(roomId: string, peerId: string, producerId: string) {
-    const room = this.getRoom(roomId);
+    const room = await this.getRoom(roomId);
     await room.pauseProducer(peerId, producerId);
   }
 
   async resumeProducer(roomId: string, peerId: string, producerId: string) {
-    const room = this.getRoom(roomId);
+    const room = await this.getRoom(roomId);
     await room.resumeProducer(peerId, producerId);
   }
 
@@ -81,7 +84,7 @@ export class RouterService {
     producerId: string,
     rtpCapabilities: mediasoup.types.RtpCapabilities,
   ) {
-    const room = this.getRoom(roomId);
+    const room = await this.getRoom(roomId);
     return await room.consume(
       peerId,
       consumerTransportId,
@@ -91,32 +94,32 @@ export class RouterService {
   }
 
   async pauseConsumer(roomId: string, peerId: string, consumerId: string) {
-    const room = this.getRoom(roomId);
+    const room = await this.getRoom(roomId);
     await room.pauseConsumer(peerId, consumerId);
   }
 
   async resumeConsumer(roomId: string, peerId: string, consumerId: string) {
-    const room = this.getRoom(roomId);
+    const room = await this.getRoom(roomId);
     await room.resumeConsumer(peerId, consumerId);
   }
 
-  closeProducer(roomId: string, peerId: string, producerId: string) {
-    const room = this.getRoom(roomId);
+  async closeProducer(roomId: string, peerId: string, producerId: string) {
+    const room = await this.getRoom(roomId);
     room.closeProducer(peerId, producerId);
   }
 
-  closeConsumer(roomId: string, peerId: string, consumerId: string) {
-    const room = this.getRoom(roomId);
+  async closeConsumer(roomId: string, peerId: string, consumerId: string) {
+    const room = await this.getRoom(roomId);
     room.closeConsumer(peerId, consumerId);
   }
 
-  getProducerListForPeer(roomId: string, peerId: string) {
-    const room = this.getRoom(roomId);
+  async getProducerListForPeer(roomId: string, peerId: string) {
+    const room = await this.getRoom(roomId);
     return room.getProducerListForPeer(peerId);
   }
 
-  getOtherProducers(roomId: string, peerId: string) {
-    const room = this.getRoom(roomId);
+  async getOtherProducers(roomId: string, peerId: string) {
+    const room = await this.getRoom(roomId);
     return room.getOtherProducers(peerId);
   }
 }

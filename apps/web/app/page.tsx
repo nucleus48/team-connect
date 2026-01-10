@@ -1,7 +1,8 @@
 import { Logo } from "@/components/logo";
+import NewRoomBtn from "@/components/room/new-room-btn";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { KeyboardIcon, Video01Icon } from "@hugeicons/core-free-icons";
+import { KeyboardIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 
 export default function Home() {
@@ -48,17 +49,7 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row md:justify-start">
-              <Button
-                size="lg"
-                className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 gap-2 px-6 text-base"
-              >
-                <HugeiconsIcon
-                  className="h-5 w-5"
-                  icon={Video01Icon}
-                  strokeWidth={2}
-                />
-                New meeting
-              </Button>
+              <NewRoomBtn />
 
               <div className="bg-background relative flex w-full max-w-xs items-center gap-2 sm:w-auto">
                 <div className="relative w-full">

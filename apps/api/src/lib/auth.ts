@@ -1,31 +1,35 @@
 import { betterAuth } from "better-auth";
 import { DB, drizzleAdapter } from "better-auth/adapters/drizzle";
-import { openAPI } from "better-auth/plugins";
+
+export interface AuthOptionsEnv {
+  GITHUB_CLIENT_ID: string;
+  GITHUB_CLIENT_SECRET: string;
+  SITE_URL: string;
+}
 
 export interface AuthOptions {
   db: DB;
-  trustedOrigins: string[];
-  githubClientId: string;
-  githubClientSecret: string;
+  env: AuthOptionsEnv;
 }
 
-export function getAuthInstance(options: AuthOptions) {
+export function getAuthInstance(opts: AuthOptions) {
   return betterAuth({
-    trustedOrigins: options.trustedOrigins,
-    database: drizzleAdapter(options.db, { provider: "sqlite" }),
+    trustedOrigins: [opts.env.SITE_URL],
+    database: drizzleAdapter(opts.db, { provider: "sqlite" }),
     socialProviders: {
       github: {
-        clientId: options.githubClientId,
-        clientSecret: options.githubClientSecret,
+        clientId: opts.env.GITHUB_CLIENT_ID,
+        clientSecret: opts.env.GITHUB_CLIENT_SECRET,
       },
     },
-    plugins: [openAPI()],
   });
 }
 
 export const auth = getAuthInstance({
   db: {},
-  trustedOrigins: [],
-  githubClientId: "",
-  githubClientSecret: "",
+  env: {
+    GITHUB_CLIENT_ID: "",
+    GITHUB_CLIENT_SECRET: "",
+    SITE_URL: "http://localhost:3000",
+  },
 });
