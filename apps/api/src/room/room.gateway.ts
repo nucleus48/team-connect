@@ -1,10 +1,10 @@
+import { ProducerData } from "@/router/room";
 import { Logger, UseFilters, UseGuards } from "@nestjs/common";
 import {
   ConnectedSocket,
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
-  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
 } from "@nestjs/websockets";
@@ -29,30 +29,52 @@ loadEnvFile();
   },
 })
 @UseGuards(AuthGuard, RoomGuard)
-export class RoomGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
-{
+export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(RoomGateway.name);
 
   constructor(private routerService: RouterService) {}
 
-  afterInit() {
-    this.logger.log("RoomGateway initialized");
+  async handleConnection(client: Socket) {
+    const { roomId } = client.handshake.query;
+
+    if (typeof roomId === "string") {
+      await client.join(roomId);
+    }
   }
 
-  handleConnection(client: Socket) {
-    this.logger.log(`Client connected: ${client.id}`);
+  async handleDisconnect(client: Socket) {
+    const { roomId } = client.handshake.query;
+
+    if (typeof roomId === "string") {
+      client.to(roomId).emit("removePeer", { peerId: client.id });
+      await this.routerService.removePeerFromRoom(roomId, client.id);
+    }
   }
 
-  handleDisconnect(client: Socket) {
-    this.logger.log(`Client disconnected: ${client.id}`);
-    // TODO: Handle peer removal from rooms and close producers/consumers
+  @SubscribeMessage("getOtherPeers")
+  getOtherPeers(@ConnectedSocket() client: Socket) {
+    return this.routerService.getOtherPeers(client.roomId, client.id);
   }
 
   @SubscribeMessage("joinRoom")
   async joinRoom(@ConnectedSocket() client: Socket) {
-    await this.routerService.addPeerToRoom(client.roomId, client.id);
-    await client.join(client.roomId);
+    await this.routerService.addPeerToRoom(
+      client.roomId,
+      client.id,
+      client.participant.userId,
+    );
+
+    await client.join([
+      `joined:${client.roomId}`,
+      `${client.participant.role}:${client.roomId}`,
+    ]);
+
+    client.to(client.roomId).emit("newPeer", {
+      peerId: client.id,
+      presenting: false,
+      userId: client.participant.userId,
+    });
+
     this.logger.log(`Client ${client.id} joined room ${client.roomId}`);
 
     const otherProducers = await this.routerService.getOtherProducers(
@@ -60,12 +82,29 @@ export class RoomGateway
       client.id,
     );
 
-    // Notify the joining peer about existing producers
-    if (otherProducers.length > 0) {
-      client.emit("newProducers", otherProducers);
-    }
+    return otherProducers;
+  }
 
-    return true;
+  @SubscribeMessage("updateRoomPresenter")
+  async updateRoomPresenter(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    data: {
+      peerId: string;
+      presenting: boolean;
+    },
+  ) {
+    await this.routerService.updateRoomPresenter(
+      client.roomId,
+      data.peerId,
+      data.presenting,
+    );
+
+    client
+      .to(`joined:${client.roomId}`)
+      .emit("presenter", { peerId: client.id });
+
+    return { message: "presenter updated" };
   }
 
   @SubscribeMessage("getRouterRtpCapabilities")
@@ -74,21 +113,18 @@ export class RoomGateway
   }
 
   @SubscribeMessage("createWebRtcTransport")
-  async createWebRtcTransport(@ConnectedSocket() client: Socket) {
-    return await this.routerService.createWebRtcTransport(
-      client.roomId,
-      client.id,
-    );
+  createWebRtcTransport(@ConnectedSocket() client: Socket) {
+    return this.routerService.createWebRtcTransport(client.roomId, client.id);
   }
 
   @SubscribeMessage("connectWebRtcTransport")
   async connectWebRtcTransport(
+    @ConnectedSocket() client: Socket,
     @MessageBody()
     data: {
       transportId: string;
       dtlsParameters: mediasoup.types.DtlsParameters;
     },
-    @ConnectedSocket() client: Socket,
   ) {
     const { transportId, dtlsParameters } = data;
     await this.routerService.connectWebRtcTransport(
@@ -97,100 +133,119 @@ export class RoomGateway
       transportId,
       dtlsParameters,
     );
+    return { message: "transport connected" };
   }
 
   @SubscribeMessage("produce")
   async produce(
+    @ConnectedSocket() client: Socket,
     @MessageBody()
     data: {
       transportId: string;
       kind: mediasoup.types.MediaKind;
       rtpParameters: mediasoup.types.RtpParameters;
+      appData: ProducerData;
     },
-    @ConnectedSocket() client: Socket,
   ) {
-    const { transportId, kind, rtpParameters } = data;
+    const { transportId, kind, rtpParameters, appData } = data;
+    const streamId = rtpParameters.msid?.split(" ")[0] ?? "";
     const producerId = await this.routerService.produce(
       client.roomId,
       client.id,
       transportId,
       kind,
       rtpParameters,
+      appData,
     );
 
-    // Notify other peers in the room about the new producer
-    client
-      .to(client.roomId)
-      .emit("newProducer", { peerId: client.id, producerId });
+    client.to(`joined:${client.roomId}`).emit("newProducer", {
+      appData,
+      streamId,
+      producerId,
+      peerId: client.id,
+    });
 
-    return producerId;
+    if (appData.display) {
+      await this.routerService.updateRoomPresenter(
+        client.roomId,
+        client.id,
+        true,
+      );
+
+      client
+        .to(`joined:${client.roomId}`)
+        .emit("presenter", { peerId: client.id });
+    }
+
+    return { id: producerId };
   }
 
-  @SubscribeMessage("pauseProducer")
-  async pauseProducer(
+  @SubscribeMessage("updateProducerData")
+  async updateProducerData(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    data: {
+      producerId: string;
+      appData: Partial<ProducerData>;
+    },
+  ) {
+    await this.routerService.updateProducerData(
+      client.roomId,
+      client.id,
+      data.producerId,
+      data.appData,
+    );
+
+    client.to(`joined:${client.roomId}`).emit("updateProducerData", {
+      producerId: data.producerId,
+      appData: data.appData,
+    });
+
+    return { message: "producer data updated" };
+  }
+
+  @SubscribeMessage("closeProducer")
+  async closeProducer(
+    @ConnectedSocket() client: Socket,
     @MessageBody()
     data: {
       producerId: string;
     },
-    @ConnectedSocket() client: Socket,
   ) {
-    const { producerId } = data;
-    await this.routerService.pauseProducer(
+    const appData = await this.routerService.closeProducer(
       client.roomId,
       client.id,
-      producerId,
+      data.producerId,
     );
-  }
 
-  @SubscribeMessage("resumeProducer")
-  async resumeProducer(
-    @MessageBody()
-    data: {
-      producerId: string;
-    },
-    @ConnectedSocket() client: Socket,
-  ) {
-    const { producerId } = data;
-    await this.routerService.resumeProducer(
-      client.roomId,
-      client.id,
-      producerId,
-    );
+    client.to(`joined:${client.roomId}`).emit("removeProducer", {
+      producerId: data.producerId,
+    });
+
+    if (appData?.display) {
+      client.to(`joined:${client.roomId}`).emit("stopPresenting");
+    }
+
+    return { message: "producer closed" };
   }
 
   @SubscribeMessage("consume")
   async consume(
     @MessageBody()
     data: {
-      consumerTransportId: string;
+      transportId: string;
       producerId: string;
       rtpCapabilities: mediasoup.types.RtpCapabilities;
     },
     @ConnectedSocket() client: Socket,
   ) {
-    const { consumerTransportId, producerId, rtpCapabilities } = data;
+    const { transportId, producerId, rtpCapabilities } = data;
     return await this.routerService.consume(
       client.roomId,
       client.id,
-      consumerTransportId,
+      transportId,
       producerId,
       rtpCapabilities,
-    );
-  }
-
-  @SubscribeMessage("pauseConsumer")
-  async pauseConsumer(
-    @MessageBody()
-    data: {
-      consumerId: string;
-    },
-    @ConnectedSocket() client: Socket,
-  ) {
-    const { consumerId } = data;
-    await this.routerService.pauseConsumer(
-      client.roomId,
-      client.id,
-      consumerId,
     );
   }
 
@@ -208,5 +263,23 @@ export class RoomGateway
       client.id,
       consumerId,
     );
+    return { message: "consumer resumed" };
+  }
+
+  @SubscribeMessage("closeConsumer")
+  async closeConsumer(
+    @MessageBody()
+    data: {
+      consumerId: string;
+    },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { consumerId } = data;
+    await this.routerService.closeConsumer(
+      client.roomId,
+      client.id,
+      consumerId,
+    );
+    return { message: "consumer closed" };
   }
 }

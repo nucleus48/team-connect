@@ -1,20 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePermission } from "./use-permission";
 
-interface MediaStreamState {
-  stream: MediaStream | null;
-  error: Error | null;
-  isAudioMuted: boolean;
-  isVideoMuted: boolean;
-  isLoading: boolean;
-}
-
-interface UseMediaStreamOptions {
+export interface UserMediaOptions {
   audioDeviceId?: string;
   videoDeviceId?: string;
 }
 
-export function useUserMedia(options: UseMediaStreamOptions) {
+export interface UserMediaState {
+  isLoading: boolean;
+  error: Error | null;
+  audioEnabled: boolean;
+  videoEnabled: boolean;
+  mediaStream: MediaStream | null;
+}
+
+export function useUserMedia(options: UserMediaOptions) {
   const {
     state: cameraPermission,
     requestPermission: requestCameraPermission,
@@ -25,31 +25,31 @@ export function useUserMedia(options: UseMediaStreamOptions) {
     requestPermission: requestMicPermission,
   } = usePermission("microphone");
 
-  const [state, setState] = useState<MediaStreamState>({
-    stream: null,
+  const [state, setState] = useState<UserMediaState>({
     error: null,
-    isAudioMuted: true,
-    isVideoMuted: true,
     isLoading: true,
+    mediaStream: null,
+    audioEnabled: false,
+    videoEnabled: false,
   });
 
-  const streamRef = useRef<MediaStream | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
 
   const getUserMedia = useCallback(async () => {
     if (cameraPermission !== "granted" && microphonePermission !== "granted") {
       setState((prev) => ({
         ...prev,
-        stream: null,
-        error: new Error("No permission"),
         isLoading: false,
+        mediaStream: null,
+        error: new Error("No permission"),
       }));
       return;
     }
 
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => {
         track.stop();
       });
     }
@@ -70,25 +70,26 @@ export function useUserMedia(options: UseMediaStreamOptions) {
             : false,
       };
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
+      const mediaStream =
+        await navigator.mediaDevices.getUserMedia(constraints);
+      mediaStreamRef.current = mediaStream;
 
       setState({
-        stream,
+        mediaStream,
         error: null,
         isLoading: false,
-        isAudioMuted: !stream.getAudioTracks().some((t) => t.enabled),
-        isVideoMuted: !stream.getVideoTracks().some((t) => t.enabled),
+        audioEnabled: !!mediaStream.getAudioTracks()[0]?.enabled,
+        videoEnabled: !!mediaStream.getVideoTracks()[0]?.enabled,
       });
     } catch (error) {
       setState((prev) => ({
         ...prev,
-        stream: null,
+        isLoading: false,
+        mediaStream: null,
         error:
           error instanceof Error
             ? error
-            : new Error("Failed to get media stream"),
-        isLoading: false,
+            : new Error("Failed to get user media"),
       }));
     }
   }, [
@@ -102,41 +103,82 @@ export function useUserMedia(options: UseMediaStreamOptions) {
     void getUserMedia();
   }, [getUserMedia]);
 
-  const toggleAudio = () => {
+  const toggleAudioEnabled = useCallback(() => {
     if (microphonePermission !== "granted") {
       requestMicPermission();
       return;
     }
 
-    if (streamRef.current) {
-      const audioTracks = streamRef.current.getAudioTracks();
-      if (audioTracks.length > 0) {
-        audioTracks[0].enabled = !audioTracks[0].enabled;
+    if (mediaStreamRef.current) {
+      const audioTrack = mediaStreamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+
+        audioTrack.dispatchEvent(
+          new CustomEvent("enabledchange", {
+            detail: { enabled: audioTrack.enabled },
+          }),
+        );
+
         setState((prev) => ({
           ...prev,
-          isAudioMuted: !audioTracks[0].enabled,
+          audioEnabled: audioTrack.enabled,
         }));
       }
     }
-  };
+  }, [microphonePermission, requestMicPermission]);
 
-  const toggleVideo = () => {
+  const toggleVideoEnabled = useCallback(() => {
     if (cameraPermission !== "granted") {
       requestCameraPermission();
       return;
     }
 
-    if (streamRef.current) {
-      const videoTracks = streamRef.current.getVideoTracks();
-      if (videoTracks.length > 0) {
-        videoTracks[0].enabled = !videoTracks[0].enabled;
+    if (mediaStreamRef.current) {
+      const videoTrack = mediaStreamRef.current.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+
+        videoTrack.dispatchEvent(
+          new CustomEvent("enabledchange", {
+            detail: { enabled: videoTrack.enabled },
+          }),
+        );
+
         setState((prev) => ({
           ...prev,
-          isVideoMuted: !videoTracks[0].enabled,
+          videoEnabled: videoTrack.enabled,
         }));
       }
     }
-  };
+  }, [cameraPermission, requestCameraPermission]);
 
-  return { ...state, refetchMedia: getUserMedia, toggleAudio, toggleVideo };
+  const stopUserMedia = useCallback(() => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => {
+        track.stop();
+      });
+
+      mediaStreamRef.current = null;
+    }
+
+    setState({
+      error: null,
+      audioEnabled: false,
+      videoEnabled: false,
+      isLoading: false,
+      mediaStream: null,
+    });
+  }, []);
+
+  const userMedia = useMemo(() => {
+    return {
+      ...state,
+      stopUserMedia,
+      toggleAudioEnabled,
+      toggleVideoEnabled,
+    };
+  }, [state, toggleAudioEnabled, toggleVideoEnabled, stopUserMedia]);
+
+  return userMedia;
 }

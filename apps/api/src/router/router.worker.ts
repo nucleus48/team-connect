@@ -24,6 +24,10 @@ export class RouterWorker implements OnModuleInit {
   get worker() {
     const worker = this.workers[this.nextWorkerIndex++];
 
+    if (!worker) {
+      throw new Error("Worker not found");
+    }
+
     if (this.nextWorkerIndex >= this.workers.length) {
       this.nextWorkerIndex = 0;
     }

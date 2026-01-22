@@ -11,14 +11,17 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { AtSign, ChevronLeft } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { useSearchParams } from "next/navigation";
 import type React from "react";
 import { toast } from "sonner";
 
 export function AuthPage() {
+  const searchParams = useSearchParams();
+
   const signInWithGithub = () => {
     void authClient.signIn.social({
       provider: "github",
-      callbackURL: location.origin,
+      callbackURL: location.origin + (searchParams.get("redirect") ?? ""),
       fetchOptions: {
         onError: ({ error }) => {
           toast.error(error.message);

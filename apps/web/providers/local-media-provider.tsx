@@ -3,23 +3,9 @@
 import { useDisplayMedia } from "@/hooks/use-display-media";
 import { useMediaDevices } from "@/hooks/use-media-devices";
 import { useUserMedia } from "@/hooks/use-user-media";
-import {
-  createContext,
-  use,
-  useEffect,
-  useEffectEvent,
-  useRef,
-  useState,
-} from "react";
+import { createContext, use, useEffect, useEffectEvent, useState } from "react";
 
-interface LocalMediaContextValue {
-  isAudioMuted: boolean;
-  isVideoMuted: boolean;
-  toggleAudio: () => void;
-  toggleVideo: () => void;
-  refetchMedia: () => Promise<void>;
-  shareScreen: () => Promise<void>;
-  stopScreenSharing: () => void;
+export interface LocalMediaContextValue {
   selectedAudioInput?: string;
   selectedVideoInput?: string;
   selectedAudioOutput?: string;
@@ -32,24 +18,11 @@ interface LocalMediaContextValue {
   setSelectedAudioOutput: React.Dispatch<
     React.SetStateAction<string | undefined>
   >;
-  videoRef: React.RefObject<HTMLVideoElement | null>;
-  displayVideoRef: React.RefObject<HTMLVideoElement | null>;
+  userMedia: ReturnType<typeof useUserMedia>;
+  displayMedia: ReturnType<typeof useDisplayMedia>;
 }
 
-const LocalMediaContext = createContext<LocalMediaContextValue>({
-  isAudioMuted: false,
-  isVideoMuted: false,
-  toggleAudio: () => void 0,
-  toggleVideo: () => void 0,
-  videoRef: { current: null },
-  displayVideoRef: { current: null },
-  setSelectedAudioInput: () => void 0,
-  setSelectedVideoInput: () => void 0,
-  setSelectedAudioOutput: () => void 0,
-  refetchMedia: () => Promise.resolve(),
-  shareScreen: () => Promise.resolve(),
-  stopScreenSharing: () => void 0,
-});
+const LocalMediaContext = createContext<LocalMediaContextValue | null>(null);
 
 export default function LocalMediaProvider({
   children,
@@ -58,75 +31,46 @@ export default function LocalMediaProvider({
   const [selectedVideoInput, setSelectedVideoInput] = useState<string>();
   const [selectedAudioOutput, setSelectedAudioOutput] = useState<string>();
 
-  const {
-    stream,
-    toggleAudio,
-    toggleVideo,
-    isAudioMuted,
-    isVideoMuted,
-    refetchMedia,
-  } = useUserMedia({
+  const { cameras, microphones, speakers } = useMediaDevices();
+  const displayMedia = useDisplayMedia();
+  const userMedia = useUserMedia({
     audioDeviceId: selectedAudioInput,
     videoDeviceId: selectedVideoInput,
   });
 
-  const {
-    stream: displayStream,
-    startDisplayMedia,
-    stopDisplayMedia,
-  } = useDisplayMedia();
-
-  const { cameras, microphones, speakers } = useMediaDevices();
-
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const displayVideoRef = useRef<HTMLVideoElement>(null);
-
-  const selectDevices = useEffectEvent(() => {
-    if (!selectedAudioInput && microphones.length > 0) {
-      setSelectedAudioInput(microphones[0].deviceId);
-    }
-    if (!selectedVideoInput && cameras.length > 0) {
-      setSelectedVideoInput(cameras[0].deviceId);
-    }
-    if (!selectedAudioOutput && speakers.length > 0) {
-      setSelectedAudioOutput(speakers[0].deviceId);
-    }
-  });
+  const selectDevices = useEffectEvent(
+    (
+      cameras: MediaDeviceInfo[],
+      speakers: MediaDeviceInfo[],
+      microphones: MediaDeviceInfo[],
+    ) => {
+      if (!selectedAudioInput && microphones.length > 0) {
+        setSelectedAudioInput(microphones[0]?.deviceId);
+      }
+      if (!selectedVideoInput && cameras.length > 0) {
+        setSelectedVideoInput(cameras[0]?.deviceId);
+      }
+      if (!selectedAudioOutput && speakers.length > 0) {
+        setSelectedAudioOutput(speakers[0]?.deviceId);
+      }
+    },
+  );
 
   useEffect(() => {
-    selectDevices();
+    selectDevices(cameras, speakers, microphones);
   }, [cameras, speakers, microphones]);
-
-  useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-    }
-  }, [stream]);
-
-  useEffect(() => {
-    if (displayVideoRef.current && displayStream) {
-      displayVideoRef.current.srcObject = displayStream;
-    }
-  }, [displayStream]);
 
   return (
     <LocalMediaContext
       value={{
-        videoRef,
-        displayVideoRef,
-        toggleAudio,
-        toggleVideo,
-        isAudioMuted,
-        isVideoMuted,
-        refetchMedia,
+        userMedia,
+        displayMedia,
         selectedAudioInput,
         selectedVideoInput,
         selectedAudioOutput,
         setSelectedAudioInput,
         setSelectedVideoInput,
         setSelectedAudioOutput,
-        shareScreen: startDisplayMedia,
-        stopScreenSharing: stopDisplayMedia,
       }}
     >
       {children}
@@ -134,4 +78,12 @@ export default function LocalMediaProvider({
   );
 }
 
-export const useLocalMedia = () => use(LocalMediaContext);
+export const useLocalMedia = () => {
+  const context = use(LocalMediaContext);
+
+  if (!context) {
+    throw new Error("useLocalMedia must be used within LocalMediaProvider");
+  }
+
+  return context;
+};

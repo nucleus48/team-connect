@@ -1,26 +1,44 @@
 "use client";
 
+import JoinedState from "@/components/room/joined-state";
 import LobbyState from "@/components/room/lobby-state";
 import { io, Socket } from "@/lib/socket";
-import { createContext, use, useEffect, useState } from "react";
+import { Device, types } from "mediasoup-client";
+import { createContext, use, useEffect, useEffectEvent, useState } from "react";
 
 type RoomState = "lobby" | "joined" | "lost";
 
-interface RoomContextValue {
-  roomId: string;
-  socket: Socket;
-  roomState: RoomState;
-  joinRoom: () => Promise<void>;
-  setRoomState: React.Dispatch<React.SetStateAction<RoomState>>;
+export interface Peer {
+  peerId: string;
+  userId: string;
+  presenting: boolean;
 }
 
-const RoomContext = createContext<RoomContextValue>({
-  roomId: "",
-  roomState: "lobby",
-  socket: {} as Socket,
-  setRoomState: () => void 0,
-  joinRoom: () => Promise.resolve(),
-});
+export interface ProducerData extends types.AppData {
+  enabled?: boolean;
+  display?: boolean;
+}
+
+export interface Producer {
+  producerId: string;
+  peerId: string;
+  streamId: string;
+  appData: ProducerData;
+}
+
+export interface RoomContextValue {
+  roomId: string;
+  socket: Socket;
+  device: Device;
+  peers: Peer[];
+  producers: Producer[];
+  roomState: RoomState;
+  joinRoom: () => Promise<void>;
+  sendTransport?: types.Transport;
+  recvTransport?: types.Transport;
+}
+
+const RoomContext = createContext<RoomContextValue | null>(null);
 
 const getSocket = (roomId: string) => {
   return io(`${process.env.NEXT_PUBLIC_BETTER_AUTH_URL ?? ""}/room`, {
@@ -30,27 +48,193 @@ const getSocket = (roomId: string) => {
   });
 };
 
+const getDevice = () => {
+  if (typeof window === "undefined") return {} as Device;
+  return new Device();
+};
+
 export function Room({ roomId }: { roomId: string }) {
+  const [device] = useState(getDevice);
   const [socket] = useState(getSocket.bind(null, roomId));
   const [roomState, setRoomState] = useState<RoomState>("lobby");
+  const [sendTransport, setSendTransport] = useState<types.Transport>();
+  const [recvTransport, setRecvTransport] = useState<types.Transport>();
+  const [peers, setPeers] = useState<Peer[]>([]);
+  const [producers, setProducers] = useState<Producer[]>([]);
 
   const joinRoom = async () => {
-    await socket.request("joinRoom");
+    const producers = await socket.request<Producer[]>("joinRoom");
+    setProducers((prev) => [...prev, ...producers]);
     setRoomState("joined");
   };
 
+  const loadDevice = async () => {
+    const routerRtpCapabilities = await socket.request<types.RtpCapabilities>(
+      "getRouterRtpCapabilities",
+    );
+    await device.load({ routerRtpCapabilities });
+  };
+
+  const initializeSendTransport = async () => {
+    const createOptions = await socket.request<
+      Parameters<Device["createSendTransport"]>["0"]
+    >("createWebRtcTransport");
+    const transport = device.createSendTransport(createOptions);
+
+    transport.addListener("connect", ({ dtlsParameters }, res, rej) => {
+      void socket
+        .request("connectWebRtcTransport", {
+          transportId: transport.id,
+          dtlsParameters,
+        })
+        .then(res)
+        .catch(rej);
+    });
+
+    transport.addListener(
+      "produce",
+      ({ kind, rtpParameters, appData }, res, rej) => {
+        if (device.canProduce(kind)) {
+          void socket
+            .request<{ id: string }>("produce", {
+              transportId: transport.id,
+              kind,
+              rtpParameters,
+              appData,
+            })
+            .then(res)
+            .catch(rej);
+        }
+      },
+    );
+
+    setSendTransport(transport);
+  };
+
+  const initializeRecvTransport = async () => {
+    const createOptions = await socket.request<
+      Parameters<Device["createRecvTransport"]>["0"]
+    >("createWebRtcTransport");
+    const transport = device.createRecvTransport(createOptions);
+
+    transport.addListener("connect", ({ dtlsParameters }, res, rej) => {
+      void socket
+        .request("connectWebRtcTransport", {
+          transportId: transport.id,
+          dtlsParameters,
+        })
+        .then(res)
+        .catch(rej);
+    });
+
+    setRecvTransport(transport);
+  };
+
+  const initializeDevice = useEffectEvent(async () => {
+    await loadDevice();
+    await Promise.all([initializeSendTransport(), initializeRecvTransport()]);
+  });
+
   useEffect(() => {
+    socket.on("connect", () => {
+      socket.emit("getOtherPeers", (peers: Peer[]) => {
+        setPeers((prev) => [...prev, ...peers]);
+      });
+
+      socket.on("newPeer", (peer: Peer) => {
+        setPeers((peers) => [...peers, peer]);
+      });
+
+      socket.on("removePeer", (data: { peerId: string }) => {
+        setPeers((peers) =>
+          peers.filter((peer) => peer.peerId !== data.peerId),
+        );
+        setProducers((producers) =>
+          producers.filter((producer) => producer.peerId !== data.peerId),
+        );
+      });
+
+      socket.on("presenter", (data: { peerId: string }) => {
+        setPeers((peers) =>
+          peers.map((peer) =>
+            peer.peerId === data.peerId ? { ...peer, presenting: true } : peer,
+          ),
+        );
+      });
+
+      socket.on("stopPresenting", () => {
+        setPeers((peers) =>
+          peers.map((peer) => ({ ...peer, presenting: false })),
+        );
+      });
+
+      socket.on("newProducer", (producer: Producer) => {
+        setProducers((producers) => [...producers, producer]);
+      });
+
+      socket.on(
+        "updateProducerData",
+        (data: { producerId: string; appData: ProducerData }) => {
+          setProducers((producers) =>
+            producers.map((producer) =>
+              producer.producerId === data.producerId
+                ? {
+                    ...producer,
+                    appData: { ...producer.appData, ...data.appData },
+                  }
+                : producer,
+            ),
+          );
+        },
+      );
+
+      socket.on("removeProducer", (data: { producerId: string }) => {
+        setProducers((producers) =>
+          producers.filter(
+            (producer) => producer.producerId !== data.producerId,
+          ),
+        );
+      });
+    });
+
     socket.connect();
+
     return () => {
       socket.disconnect();
     };
   }, [socket]);
 
+  useEffect(() => {
+    if (roomState !== "joined") return;
+    void initializeDevice();
+  }, [roomState]);
+
   return (
-    <RoomContext value={{ roomId, socket, roomState, setRoomState, joinRoom }}>
+    <RoomContext
+      value={{
+        roomId,
+        socket,
+        device,
+        peers,
+        producers,
+        roomState,
+        joinRoom,
+        sendTransport,
+        recvTransport,
+      }}
+    >
       {roomState === "lobby" && <LobbyState />}
+      {roomState === "joined" && <JoinedState />}
     </RoomContext>
   );
 }
 
-export const useRoom = () => use(RoomContext);
+export const useRoom = () => {
+  const context = use(RoomContext);
+
+  if (!context) {
+    throw new Error("useRoom must be used within Room");
+  }
+
+  return context;
+};

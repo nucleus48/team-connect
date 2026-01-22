@@ -10,7 +10,9 @@ export function proxy(request: NextRequest) {
   }
 
   if (pathname.startsWith("/room") && !sessionCookie) {
-    return NextResponse.redirect(new URL("/auth", request.url));
+    return NextResponse.redirect(
+      new URL(`/auth?redirect=${pathname}`, request.url),
+    );
   }
 
   return NextResponse.next();

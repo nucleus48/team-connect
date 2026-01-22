@@ -2,45 +2,99 @@ import { Logger } from "@nestjs/common";
 import * as mediasoup from "mediasoup";
 import { config } from "../config/mediasoup.config";
 
-interface Peer {
-  id: string;
-  transports: Map<string, mediasoup.types.WebRtcTransport>;
-  producers: Map<string, mediasoup.types.Producer>;
+export interface ProducerData extends mediasoup.types.AppData {
+  enabled?: boolean;
+  display?: boolean;
+}
+
+export interface Peer {
+  peerId: string;
+  userId: string;
+  presenting: boolean;
   consumers: Map<string, mediasoup.types.Consumer>;
+  transports: Map<string, mediasoup.types.WebRtcTransport>;
+  producers: Map<string, mediasoup.types.Producer<ProducerData>>;
 }
 
 export class Room {
-  private readonly logger = new Logger(Room.name);
-
-  public id: string;
-  public router: mediasoup.types.Router;
+  private logger = new Logger(Room.name);
   private peers = new Map<string, Peer>();
 
-  constructor(roomId: string, router: mediasoup.types.Router) {
-    this.id = roomId;
-    this.router = router;
-  }
+  constructor(
+    public id: string,
+    public router: mediasoup.types.Router,
+  ) {}
 
-  addPeer(peerId: string) {
+  addPeer(peerId: string, userId: string) {
     this.peers.set(peerId, {
-      id: peerId,
-      transports: new Map(),
+      userId,
+      peerId: peerId,
+      presenting: false,
       producers: new Map(),
       consumers: new Map(),
+      transports: new Map(),
     });
 
     this.logger.log(`Peer ${peerId} joined room ${this.id}`);
   }
 
-  getPeer(peerId: string) {
+  private getPeer(peerId: string) {
     const peer = this.peers.get(peerId);
+
     if (!peer) {
       throw new Error(`Peer ${peerId} not found in room ${this.id}`);
     }
+
     return peer;
   }
 
+  get peersLength() {
+    return this.peers.size;
+  }
+
+  getOtherPeers(peerId: string) {
+    const otherPeers: Pick<Peer, "peerId" | "userId" | "presenting">[] = [];
+
+    for (const peer of this.peers.values()) {
+      if (peer.peerId !== peerId) {
+        otherPeers.push({
+          peerId: peer.peerId,
+          userId: peer.userId,
+          presenting: peer.presenting,
+        });
+      }
+    }
+
+    return otherPeers;
+  }
+
+  updatePeerPresenting(peerId: string, presenting: boolean) {
+    for (const peer of this.peers.values()) {
+      if (peer.peerId === peerId) {
+        peer.presenting = presenting;
+      } else {
+        peer.presenting = false;
+      }
+    }
+  }
+
   removePeer(peerId: string) {
+    const peer = this.peers.get(peerId);
+
+    if (peer) {
+      peer.producers.forEach((producer) => {
+        producer.close();
+      });
+
+      peer.consumers.forEach((consumer) => {
+        consumer.close();
+      });
+
+      peer.transports.forEach((transport) => {
+        transport.close();
+      });
+    }
+
     this.peers.delete(peerId);
     this.logger.log(`Peer ${peerId} left room ${this.id}`);
   }
@@ -73,11 +127,7 @@ export class Room {
     };
   }
 
-  async connectWebRtcTransport(
-    peerId: string,
-    transportId: string,
-    dtlsParameters: mediasoup.types.DtlsParameters,
-  ) {
+  private getTransport(peerId: string, transportId: string) {
     const peer = this.getPeer(peerId);
     const transport = peer.transports.get(transportId);
 
@@ -87,6 +137,15 @@ export class Room {
       );
     }
 
+    return transport;
+  }
+
+  async connectWebRtcTransport(
+    peerId: string,
+    transportId: string,
+    dtlsParameters: mediasoup.types.DtlsParameters,
+  ) {
+    const transport = this.getTransport(peerId, transportId);
     await transport.connect({ dtlsParameters });
 
     this.logger.log(
@@ -99,17 +158,11 @@ export class Room {
     transportId: string,
     kind: mediasoup.types.MediaKind,
     rtpParameters: mediasoup.types.RtpParameters,
+    appData: ProducerData,
   ) {
     const peer = this.getPeer(peerId);
-    const transport = peer.transports.get(transportId);
-
-    if (!transport) {
-      throw new Error(
-        `Transport ${transportId} not found for peer ${peerId} in room ${this.id}`,
-      );
-    }
-
-    const producer = await transport.produce({ kind, rtpParameters });
+    const transport = this.getTransport(peerId, transportId);
+    const producer = await transport.produce({ kind, rtpParameters, appData });
     peer.producers.set(producer.id, producer);
 
     this.logger.log(
@@ -119,7 +172,7 @@ export class Room {
     return producer.id;
   }
 
-  async pauseProducer(peerId: string, producerId: string) {
+  private getProducer(peerId: string, producerId: string) {
     const peer = this.getPeer(peerId);
     const producer = peer.producers.get(producerId);
 
@@ -129,108 +182,42 @@ export class Room {
       );
     }
 
-    await producer.pause();
-
-    this.logger.log(
-      `Producer ${producerId} paused for peer ${peerId} in room ${this.id}`,
-    );
+    return producer;
   }
 
-  async resumeProducer(peerId: string, producerId: string) {
-    const peer = this.getPeer(peerId);
-    const producer = peer.producers.get(producerId);
+  getOtherProducers(peerId: string) {
+    const otherProducers: {
+      peerId: string;
+      streamId: string;
+      producerId: string;
+      appData: ProducerData;
+    }[] = [];
 
-    if (!producer) {
-      throw new Error(
-        `Producer ${producerId} not found for peer ${peerId} in room ${this.id}`,
-      );
+    for (const peer of this.peers.values()) {
+      if (peer.peerId !== peerId) {
+        for (const producer of peer.producers.values()) {
+          const streamId = producer.rtpParameters.msid?.split(" ")[0] ?? "";
+
+          otherProducers.push({
+            streamId,
+            peerId: peer.peerId,
+            producerId: producer.id,
+            appData: producer.appData,
+          });
+        }
+      }
     }
 
-    await producer.resume();
-
-    this.logger.log(
-      `Producer ${producerId} resumed for peer ${peerId} in room ${this.id}`,
-    );
+    return otherProducers;
   }
 
-  async pauseConsumer(peerId: string, consumerId: string) {
-    const peer = this.getPeer(peerId);
-    const consumer = peer.consumers.get(consumerId);
-
-    if (!consumer) {
-      throw new Error(
-        `Consumer ${consumerId} not found for peer ${peerId} in room ${this.id}`,
-      );
-    }
-
-    await consumer.pause();
-
-    this.logger.log(
-      `Consumer ${consumerId} paused for peer ${peerId} in room ${this.id}`,
-    );
-  }
-
-  async resumeConsumer(peerId: string, consumerId: string) {
-    const peer = this.getPeer(peerId);
-    const consumer = peer.consumers.get(consumerId);
-
-    if (!consumer) {
-      throw new Error(
-        `Consumer ${consumerId} not found for peer ${peerId} in room ${this.id}`,
-      );
-    }
-
-    await consumer.resume();
-
-    this.logger.log(
-      `Consumer ${consumerId} resumed for peer ${peerId} in room ${this.id}`,
-    );
-  }
-
-  async consume(
+  updateProducerData(
     peerId: string,
-    consumerTransportId: string,
     producerId: string,
-    rtpCapabilities: mediasoup.types.RtpCapabilities,
+    appData: Partial<ProducerData>,
   ) {
-    const peer = this.getPeer(peerId);
-    const consumerTransport = peer.transports.get(consumerTransportId);
-
-    if (!consumerTransport) {
-      throw new Error(
-        `Consumer transport ${consumerTransportId} not found for peer ${peerId} in room ${this.id}`,
-      );
-    }
-
-    const canConsume = this.router.canConsume({
-      producerId,
-      rtpCapabilities,
-    });
-
-    if (!canConsume) {
-      throw new Error(
-        `Router cannot consume producer ${producerId} with given RTP capabilities`,
-      );
-    }
-
-    const consumer = await consumerTransport.consume({
-      producerId,
-      rtpCapabilities,
-      paused: false,
-    });
-
-    peer.consumers.set(consumer.id, consumer);
-
-    this.logger.log(
-      `Consumer ${consumer.id} created for peer ${peerId} consuming producer ${producerId}`,
-    );
-
-    return {
-      id: consumer.id,
-      producerId: consumer.producerId,
-      kind: consumer.kind,
-      rtpParameters: consumer.rtpParameters,
-    };
+    const producer = this.getProducer(peerId, producerId);
+    producer.appData = { ...producer.appData, ...appData };
   }
 
   closeProducer(peerId: string, producerId: string) {
@@ -243,7 +230,73 @@ export class Room {
       this.logger.log(
         `Producer ${producerId} closed for peer ${peerId} in room ${this.id}`,
       );
+
+      return producer.appData;
     }
+  }
+
+  async consume(
+    peerId: string,
+    transportId: string,
+    producerId: string,
+    rtpCapabilities: mediasoup.types.RtpCapabilities,
+  ) {
+    const canConsume = this.router.canConsume({
+      producerId,
+      rtpCapabilities,
+    });
+
+    if (!canConsume) {
+      throw new Error(
+        `Router cannot consume producer ${producerId} with given RTP capabilities`,
+      );
+    }
+
+    const peer = this.getPeer(peerId);
+    const transport = this.getTransport(peerId, transportId);
+    const consumer = await transport.consume({
+      producerId,
+      rtpCapabilities,
+      paused: true,
+    });
+
+    consumer.addListener("producerclose", () => {
+      this.closeConsumer(peerId, consumer.id);
+    });
+
+    peer.consumers.set(consumer.id, consumer);
+
+    this.logger.log(
+      `Consumer ${consumer.id} created for peer ${peerId} consuming producer ${producerId}`,
+    );
+
+    return {
+      id: consumer.id,
+      kind: consumer.kind,
+      producerId: consumer.producerId,
+      rtpParameters: consumer.rtpParameters,
+    };
+  }
+
+  private getConsumer(peerId: string, consumerId: string) {
+    const peer = this.getPeer(peerId);
+    const consumer = peer.consumers.get(consumerId);
+
+    if (!consumer) {
+      throw new Error(
+        `Consumer ${consumerId} not found for peer ${peerId} in room ${this.id}`,
+      );
+    }
+
+    return consumer;
+  }
+
+  async resumeConsumer(peerId: string, consumerId: string) {
+    const consumer = this.getConsumer(peerId, consumerId);
+    await consumer.resume();
+    this.logger.log(
+      `Consumer ${consumerId} resumed for peer ${peerId} in room ${this.id}`,
+    );
   }
 
   closeConsumer(peerId: string, consumerId: string) {
@@ -257,22 +310,5 @@ export class Room {
         `Consumer ${consumerId} closed for peer ${peerId} in room ${this.id}`,
       );
     }
-  }
-
-  getProducerListForPeer(peerId: string) {
-    const peer = this.getPeer(peerId);
-    return Array.from(peer.producers.keys());
-  }
-
-  getOtherProducers(peerId: string) {
-    const otherProducers: { peerId: string; producerId: string }[] = [];
-    for (const [id, peer] of this.peers.entries()) {
-      if (id !== peerId) {
-        for (const producerId of peer.producers.keys()) {
-          otherProducers.push({ peerId: id, producerId });
-        }
-      }
-    }
-    return otherProducers;
   }
 }

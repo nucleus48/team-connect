@@ -21,18 +21,14 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useTransition } from "react";
+import MediaCard from "../media-card";
 
 export default function LobbyState() {
-  const { joinRoom } = useRoom();
+  const { peers, joinRoom } = useRoom();
   const [isJoiningRoom, startTransition] = useTransition();
   const { cameras, microphones, speakers } = useMediaDevices();
   const {
-    videoRef,
-    isAudioMuted,
-    isVideoMuted,
-    toggleAudio,
-    toggleVideo,
-    refetchMedia,
+    userMedia,
     selectedAudioInput,
     selectedAudioOutput,
     selectedVideoInput,
@@ -50,16 +46,14 @@ export default function LobbyState() {
         <div className="flex w-full flex-col gap-4">
           <div className="group relative aspect-video overflow-hidden rounded-xl bg-zinc-900 shadow-2xl ring-1 ring-white/10">
             {/* Video Element */}
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
+            <MediaCard
               muted
-              className={`h-full w-full scale-x-[-1] transform object-cover transition-opacity duration-300 ${isVideoMuted ? "opacity-0" : "opacity-100"}`}
+              mediaStream={userMedia.mediaStream}
+              className={`h-full w-full scale-x-[-1] transform object-cover transition-opacity duration-300 ${userMedia.videoEnabled ? "opacity-100" : "opacity-0"}`}
             />
 
             {/* Camera Off State / Placeholder */}
-            {isVideoMuted && (
+            {!userMedia.videoEnabled && (
               <div className="text-muted-foreground absolute inset-0 flex items-center justify-center">
                 <div className="flex flex-col items-center gap-2">
                   <div className="rounded-full bg-zinc-800 p-4">
@@ -77,24 +71,26 @@ export default function LobbyState() {
 
             <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2">
               <Button
-                variant={isAudioMuted ? "destructive" : "secondary"}
+                variant={!userMedia.audioEnabled ? "destructive" : "secondary"}
                 size="icon"
                 className="size-12 rounded-full shadow-lg"
-                onClick={toggleAudio}
+                onClick={userMedia.toggleAudioEnabled}
               >
                 <HugeiconsIcon
-                  icon={isAudioMuted ? MicOff01Icon : Mic01Icon}
+                  icon={!userMedia.audioEnabled ? MicOff01Icon : Mic01Icon}
                   className="size-5"
                 />
               </Button>
               <Button
-                variant={isVideoMuted ? "destructive" : "secondary"}
+                variant={!userMedia.videoEnabled ? "destructive" : "secondary"}
                 size="icon"
                 className="size-12 rounded-full shadow-lg"
-                onClick={toggleVideo}
+                onClick={userMedia.toggleVideoEnabled}
               >
                 <HugeiconsIcon
-                  icon={isVideoMuted ? CameraOff01Icon : Camera01Icon}
+                  icon={
+                    !userMedia.videoEnabled ? CameraOff01Icon : Camera01Icon
+                  }
                   className="size-5"
                 />
               </Button>
@@ -104,12 +100,7 @@ export default function LobbyState() {
           <div className="mx-auto flex w-full max-w-xl flex-wrap justify-center gap-2">
             <Select
               value={selectedAudioInput}
-              onValueChange={(val) => {
-                setSelectedAudioInput(val);
-                setTimeout(() => {
-                  void refetchMedia();
-                }, 100);
-              }}
+              onValueChange={setSelectedAudioInput}
             >
               <SelectTrigger className="h-8 w-fit min-w-[140px] rounded-full border-zinc-200 bg-transparent text-xs dark:border-zinc-800">
                 <HugeiconsIcon icon={Mic01Icon} className="mr-2 size-3" />
@@ -154,12 +145,7 @@ export default function LobbyState() {
 
             <Select
               value={selectedVideoInput}
-              onValueChange={(val) => {
-                setSelectedVideoInput(val);
-                setTimeout(() => {
-                  void refetchMedia();
-                }, 100);
-              }}
+              onValueChange={setSelectedVideoInput}
             >
               <SelectTrigger className="h-8 w-fit min-w-[140px] rounded-full border-zinc-200 bg-transparent text-xs dark:border-zinc-800">
                 <HugeiconsIcon icon={Camera01Icon} className="mr-2 size-3" />
@@ -187,7 +173,11 @@ export default function LobbyState() {
             <h1 className="text-3xl font-normal tracking-tight">
               Ready to join?
             </h1>
-            <p className="text-muted-foreground">No one else is here</p>
+            <p className="text-muted-foreground">
+              {peers.length
+                ? `${peers.length.toString()} peers active`
+                : "No one else is here"}
+            </p>
           </div>
 
           <div className="flex w-full max-w-xs flex-col gap-3">
