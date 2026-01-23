@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useIsMobile } from "./use-mobile";
 import { usePermission } from "./use-permission";
 
 export interface UserMediaOptions {
@@ -15,6 +16,7 @@ export interface UserMediaState {
 }
 
 export function useUserMedia(options: UserMediaOptions) {
+  const isMobile = useIsMobile();
   const {
     state: cameraPermission,
     requestPermission: requestCameraPermission,
@@ -65,7 +67,10 @@ export function useUserMedia(options: UserMediaOptions) {
         video:
           cameraPermission === "granted"
             ? options.videoDeviceId
-              ? { deviceId: { exact: options.videoDeviceId } }
+              ? {
+                  deviceId: { exact: options.videoDeviceId },
+                  aspectRatio: { ideal: isMobile ? 1 : 16 / 9 },
+                }
               : true
             : false,
       };
@@ -93,6 +98,7 @@ export function useUserMedia(options: UserMediaOptions) {
       }));
     }
   }, [
+    isMobile,
     cameraPermission,
     microphonePermission,
     options.audioDeviceId,

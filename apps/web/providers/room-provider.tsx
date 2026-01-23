@@ -23,6 +23,7 @@ export interface Producer {
   producerId: string;
   peerId: string;
   streamId: string;
+  kind: types.MediaKind;
   appData: ProducerData;
 }
 
@@ -64,7 +65,9 @@ export function Room({ roomId }: { roomId: string }) {
 
   const joinRoom = async () => {
     const producers = await socket.request<Producer[]>("joinRoom");
-    setProducers((prev) => [...prev, ...producers]);
+    setProducers((prev) =>
+      uniqueMerge([...prev, ...producers], (p) => p.producerId),
+    );
     setRoomState("joined");
   };
 
@@ -138,11 +141,11 @@ export function Room({ roomId }: { roomId: string }) {
   useEffect(() => {
     socket.on("connect", () => {
       socket.emit("getOtherPeers", (peers: Peer[]) => {
-        setPeers((prev) => [...prev, ...peers]);
+        setPeers((prev) => uniqueMerge([...prev, ...peers], (p) => p.peerId));
       });
 
       socket.on("newPeer", (peer: Peer) => {
-        setPeers((peers) => [...peers, peer]);
+        setPeers((peers) => uniqueMerge([...peers, peer], (p) => p.peerId));
       });
 
       socket.on("removePeer", (data: { peerId: string }) => {
@@ -169,7 +172,9 @@ export function Room({ roomId }: { roomId: string }) {
       });
 
       socket.on("newProducer", (producer: Producer) => {
-        setProducers((producers) => [...producers, producer]);
+        setProducers((producers) =>
+          uniqueMerge([...producers, producer], (p) => p.producerId),
+        );
       });
 
       socket.on(
@@ -238,3 +243,13 @@ export const useRoom = () => {
 
   return context;
 };
+
+function uniqueMerge<T>(arr: T[], keyFn: (item: T) => string) {
+  const map = new Map<string, T>();
+
+  for (const item of arr) {
+    map.set(keyFn(item), item);
+  }
+
+  return Array.from(map.values());
+}

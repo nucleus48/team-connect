@@ -149,7 +149,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const { transportId, kind, rtpParameters, appData } = data;
     const streamId = rtpParameters.msid?.split(" ")[0] ?? "";
-    const producerId = await this.routerService.produce(
+    const producer = await this.routerService.produce(
       client.roomId,
       client.id,
       transportId,
@@ -161,8 +161,9 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.to(`joined:${client.roomId}`).emit("newProducer", {
       appData,
       streamId,
-      producerId,
       peerId: client.id,
+      kind: producer.kind,
+      producerId: producer.id,
     });
 
     if (appData.display) {
@@ -177,7 +178,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
         .emit("presenter", { peerId: client.id });
     }
 
-    return { id: producerId };
+    return { id: producer.id };
   }
 
   @SubscribeMessage("updateProducerData")

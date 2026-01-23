@@ -67,7 +67,7 @@ export function AuthPage() {
               Sign In or Join Now!
             </h1>
             <p className="text-muted-foreground text-base">
-              login or create your efferd account.
+              login or create your Team Connect account.
             </p>
           </div>
           <div className="space-y-2">

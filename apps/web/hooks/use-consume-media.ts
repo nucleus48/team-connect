@@ -5,11 +5,13 @@ import { useEffect, useRef } from "react";
 export function useConsumeMedia(producerIds: string[]) {
   const { socket, device, recvTransport } = useRoom();
   const mediaStreamRef = useRef(new MediaStream());
+  const strProducerIds = JSON.stringify(producerIds);
 
   useEffect(() => {
     if (!recvTransport) return;
 
     let isMounted = true;
+    const producerIds = JSON.parse(strProducerIds) as string[];
 
     const consume = async (producerId: string, transport: types.Transport) => {
       const consumeOptions = await socket.request<
@@ -45,7 +47,7 @@ export function useConsumeMedia(producerIds: string[]) {
         });
       });
     };
-  }, [producerIds.toString(), recvTransport, socket, device]);
+  }, [strProducerIds, recvTransport, socket, device]);
 
   // eslint-disable-next-line react-hooks/refs
   return mediaStreamRef.current;

@@ -14,6 +14,26 @@ export function useDisplayMedia() {
   });
 
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const controllerRef = useRef(new AbortController());
+
+  const stopDisplayMedia = useCallback(() => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => {
+        track.stop();
+      });
+
+      mediaStreamRef.current = null;
+    }
+
+    controllerRef.current.abort();
+    controllerRef.current = new AbortController();
+
+    setState({
+      error: null,
+      isLoading: false,
+      mediaStream: null,
+    });
+  }, []);
 
   const startDisplayMedia = useCallback(async () => {
     try {
@@ -29,6 +49,12 @@ export function useDisplayMedia() {
         error: null,
         isLoading: false,
       });
+
+      mediaStream
+        .getVideoTracks()[0]
+        ?.addEventListener("ended", stopDisplayMedia, {
+          signal: controllerRef.current.signal,
+        });
     } catch (error) {
       setState({
         isLoading: false,
@@ -39,23 +65,7 @@ export function useDisplayMedia() {
             : new Error("Failed to get display media"),
       });
     }
-  }, []);
-
-  const stopDisplayMedia = useCallback(() => {
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => {
-        track.stop();
-      });
-
-      mediaStreamRef.current = null;
-    }
-
-    setState({
-      error: null,
-      isLoading: false,
-      mediaStream: null,
-    });
-  }, []);
+  }, [stopDisplayMedia]);
 
   const displayMedia = useMemo(() => {
     return {

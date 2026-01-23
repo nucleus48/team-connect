@@ -24,10 +24,8 @@ export default function ControlBar() {
   const { userMedia, displayMedia } = useLocalMedia();
 
   const handleLeave = () => {
-    // Stop all tracks
     userMedia.stopUserMedia();
     displayMedia.stopDisplayMedia();
-    // Redirect to home
     router.push("/");
   };
 
@@ -58,7 +56,7 @@ export default function ControlBar() {
               : displayMedia.startDisplayMedia
           }
           isActive={!!displayMedia.mediaStream}
-          activeIcon={Share01Icon} // Just using share icon for active state too for now, or maybe a distinct one
+          activeIcon={Share01Icon}
           inactiveIcon={Share01Icon}
           variant={displayMedia.mediaStream ? "accent" : "secondary"}
         />

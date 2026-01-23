@@ -169,7 +169,7 @@ export class Room {
       `Producer ${producer.id} created for peer ${peerId} in room ${this.id}`,
     );
 
-    return producer.id;
+    return { id: producer.id, kind: producer.kind };
   }
 
   private getProducer(peerId: string, producerId: string) {
@@ -190,6 +190,7 @@ export class Room {
       peerId: string;
       streamId: string;
       producerId: string;
+      kind: mediasoup.types.MediaKind;
       appData: ProducerData;
     }[] = [];
 
@@ -201,6 +202,7 @@ export class Room {
           otherProducers.push({
             streamId,
             peerId: peer.peerId,
+            kind: producer.kind,
             producerId: producer.id,
             appData: producer.appData,
           });
