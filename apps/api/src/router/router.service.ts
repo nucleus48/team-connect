@@ -1,7 +1,8 @@
 import { Injectable } from "@nestjs/common";
+import { RemotePeer, RemoteProducerData } from "@repo/types/api/room";
 import * as mediasoup from "mediasoup";
 import { config } from "../config/mediasoup.config";
-import { ProducerData, Room } from "./room";
+import { Room } from "./room";
 import { RouterWorker } from "./router.worker";
 
 @Injectable()
@@ -30,9 +31,9 @@ export class RouterService {
     return room;
   }
 
-  async addPeerToRoom(roomId: string, peerId: string, userId: string) {
+  async addPeerToRoom(roomId: string, peer: RemotePeer) {
     const room = await this.getRoom(roomId);
-    room.addPeer(peerId, userId);
+    room.addPeer(peer);
   }
 
   async getOtherPeers(roomId: string, peerId: string) {
@@ -85,7 +86,7 @@ export class RouterService {
     transportId: string,
     kind: mediasoup.types.MediaKind,
     rtpParameters: mediasoup.types.RtpParameters,
-    appData: ProducerData,
+    appData: RemoteProducerData,
   ) {
     const room = await this.getRoom(roomId);
     return await room.produce(
@@ -106,7 +107,7 @@ export class RouterService {
     roomId: string,
     peerId: string,
     producerId: string,
-    appData: Partial<ProducerData>,
+    appData: Partial<RemoteProducerData>,
   ) {
     const room = await this.getRoom(roomId);
     room.updateProducerData(peerId, producerId, appData);

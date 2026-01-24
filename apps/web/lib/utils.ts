@@ -16,3 +16,12 @@ export async function tryCatch<T>(promise: Promise<T>) {
     };
   }
 }
+
+export function nameInitials(name: string) {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase();
+}

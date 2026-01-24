@@ -2,43 +2,56 @@
 
 import { useConsumeMedia } from "@/hooks/use-consume-media";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { useLocalMedia } from "@/providers/local-media-provider";
 import { useRoom } from "@/providers/room-provider";
 import { useMemo } from "react";
-import VideoTile from "./video-tile";
+import VideoTile, { VideoTileProps } from "./video-tile";
 
-interface TileData {
-  id: string;
-  name: string;
-  isLocal: boolean;
-  isScreenShare: boolean;
-  mediaStream?: MediaStream | null;
+interface TileData extends Pick<
+  VideoTileProps,
+  | "id"
+  | "name"
+  | "image"
+  | "display"
+  | "isLocal"
+  | "mediaStream"
+  | "audioEnabled"
+  | "videoEnabled"
+  | "isScreenShare"
+> {
   producerIds?: string[];
 }
 
 export default function VideoGrid() {
-  const { peers, producers } = useRoom();
+  const { data } = useSession();
   const { userMedia, displayMedia } = useLocalMedia();
+  const { peers, producers, isCurrentUserPresenting } = useRoom();
 
   const tiles = useMemo<TileData[]>(() => {
     const allTiles: TileData[] = [];
 
     allTiles.push({
-      id: "local-cam",
-      name: "You",
       isLocal: true,
-      isScreenShare: false,
+      id: "local-cam",
+      image: data?.user.image,
+      name: data?.user.name ?? "",
       mediaStream: userMedia.mediaStream,
+      audioEnabled: userMedia.audioEnabled,
+      videoEnabled: userMedia.videoEnabled,
     });
 
     if (displayMedia.mediaStream) {
       allTiles.push({
-        id: "local-screen",
-        name: "Your Screen",
         isLocal: true,
-        isScreenShare: true,
+        display: true,
+        id: "local-screen",
+        videoEnabled: true,
+        image: data?.user.image,
+        isScreenShare: isCurrentUserPresenting,
         mediaStream: displayMedia.mediaStream,
+        name: data?.user.name ? `${data.user.name}'s Screen` : "",
       });
     }
 
@@ -47,11 +60,17 @@ export default function VideoGrid() {
       const cameraProducers = peerProducers.filter((p) => !p.appData.display);
 
       allTiles.push({
-        id: `remote-cam-${peer.peerId}`,
-        name: "Peer",
         isLocal: false,
-        isScreenShare: false,
+        name: peer.name,
+        image: peer.image,
+        id: `remote-cam-${peer.peerId}`,
         producerIds: cameraProducers.map((p) => p.producerId),
+        audioEnabled: cameraProducers.some(
+          (p) => p.kind === "audio" && p.appData.enabled,
+        ),
+        videoEnabled: cameraProducers.some(
+          (p) => p.kind === "video" && p.appData.enabled,
+        ),
       });
 
       const [screenProducer] = peerProducers.filter(
@@ -60,17 +79,27 @@ export default function VideoGrid() {
 
       if (screenProducer) {
         allTiles.push({
-          id: `remote-screen-${peer.peerId}`,
-          name: "Peer's Screen",
+          display: true,
           isLocal: false,
+          image: peer.image,
+          name: `${peer.name}'s Screen`,
           isScreenShare: peer.presenting,
+          id: `remote-screen-${peer.peerId}`,
           producerIds: [screenProducer.producerId],
+          videoEnabled: screenProducer.appData.enabled,
         });
       }
     });
 
     return allTiles;
-  }, [peers, producers, userMedia.mediaStream, displayMedia.mediaStream]);
+  }, [
+    data,
+    peers,
+    userMedia,
+    producers,
+    displayMedia.mediaStream,
+    isCurrentUserPresenting,
+  ]);
 
   const presentationTile = tiles.findLast((t) => t.isScreenShare);
 
@@ -114,7 +143,7 @@ function StandardGridLayout({ tiles }: { tiles: TileData[] }) {
         />
         <TileRenderer
           tile={tileOne}
-          className="absolute right-4 bottom-4 h-32 w-max sm:h-40"
+          className="absolute right-4 bottom-4 z-30 h-32 w-max sm:h-40"
         />
       </div>
     );
@@ -181,20 +210,10 @@ function TileRenderer({
   fit?: "cover" | "contain";
 }) {
   if (!tile.isLocal && tile.producerIds) {
-    return <RemoteTileWrapper tile={tile} className={className} fit={fit} />;
+    return <RemoteTileWrapper fit={fit} tile={tile} className={className} />;
   }
 
-  return (
-    <VideoTile
-      id={tile.id}
-      name={tile.name}
-      isLocal={tile.isLocal}
-      isScreenShare={tile.isScreenShare}
-      mediaStream={tile.mediaStream ?? null}
-      className={className}
-      fit={fit}
-    />
-  );
+  return <VideoTile fit={fit} className={className} {...tile} />;
 }
 
 function RemoteTileWrapper({
@@ -210,13 +229,10 @@ function RemoteTileWrapper({
 
   return (
     <VideoTile
-      id={tile.id}
-      name={tile.name}
-      isLocal={tile.isLocal}
-      isScreenShare={tile.isScreenShare}
-      mediaStream={mediaStream}
-      className={className}
       fit={fit}
+      className={className}
+      mediaStream={mediaStream}
+      {...tile}
     />
   );
 }

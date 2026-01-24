@@ -1,19 +1,16 @@
 import { Logger } from "@nestjs/common";
+import {
+  RemotePeer,
+  RemoteProducer,
+  RemoteProducerData,
+} from "@repo/types/api/room";
 import * as mediasoup from "mediasoup";
 import { config } from "../config/mediasoup.config";
 
-export interface ProducerData extends mediasoup.types.AppData {
-  enabled?: boolean;
-  display?: boolean;
-}
-
-export interface Peer {
-  peerId: string;
-  userId: string;
-  presenting: boolean;
+export interface Peer extends RemotePeer {
   consumers: Map<string, mediasoup.types.Consumer>;
   transports: Map<string, mediasoup.types.WebRtcTransport>;
-  producers: Map<string, mediasoup.types.Producer<ProducerData>>;
+  producers: Map<string, mediasoup.types.Producer<RemoteProducerData>>;
 }
 
 export class Room {
@@ -25,17 +22,15 @@ export class Room {
     public router: mediasoup.types.Router,
   ) {}
 
-  addPeer(peerId: string, userId: string) {
-    this.peers.set(peerId, {
-      userId,
-      peerId: peerId,
-      presenting: false,
+  addPeer(peer: RemotePeer) {
+    this.peers.set(peer.peerId, {
+      ...peer,
       producers: new Map(),
       consumers: new Map(),
       transports: new Map(),
     });
 
-    this.logger.log(`Peer ${peerId} joined room ${this.id}`);
+    this.logger.log(`Peer ${peer.peerId} joined room ${this.id}`);
   }
 
   private getPeer(peerId: string) {
@@ -53,11 +48,15 @@ export class Room {
   }
 
   getOtherPeers(peerId: string) {
-    const otherPeers: Pick<Peer, "peerId" | "userId" | "presenting">[] = [];
+    const otherPeers: RemotePeer[] = [];
 
     for (const peer of this.peers.values()) {
       if (peer.peerId !== peerId) {
         otherPeers.push({
+          name: peer.name,
+          role: peer.role,
+          image: peer.image,
+          email: peer.email,
           peerId: peer.peerId,
           userId: peer.userId,
           presenting: peer.presenting,
@@ -158,7 +157,7 @@ export class Room {
     transportId: string,
     kind: mediasoup.types.MediaKind,
     rtpParameters: mediasoup.types.RtpParameters,
-    appData: ProducerData,
+    appData: RemoteProducerData,
   ) {
     const peer = this.getPeer(peerId);
     const transport = this.getTransport(peerId, transportId);
@@ -186,13 +185,7 @@ export class Room {
   }
 
   getOtherProducers(peerId: string) {
-    const otherProducers: {
-      peerId: string;
-      streamId: string;
-      producerId: string;
-      kind: mediasoup.types.MediaKind;
-      appData: ProducerData;
-    }[] = [];
+    const otherProducers: RemoteProducer[] = [];
 
     for (const peer of this.peers.values()) {
       if (peer.peerId !== peerId) {
@@ -216,7 +209,7 @@ export class Room {
   updateProducerData(
     peerId: string,
     producerId: string,
-    appData: Partial<ProducerData>,
+    appData: Partial<RemoteProducerData>,
   ) {
     const producer = this.getProducer(peerId, producerId);
     producer.appData = { ...producer.appData, ...appData };

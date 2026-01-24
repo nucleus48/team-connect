@@ -3,40 +3,28 @@
 import JoinedState from "@/components/room/joined-state";
 import LobbyState from "@/components/room/lobby-state";
 import { io, Socket } from "@/lib/socket";
+import {
+  RemotePeer,
+  RemoteProducer,
+  RemoteProducerData,
+} from "@repo/types/api/room";
 import { Device, types } from "mediasoup-client";
 import { createContext, use, useEffect, useEffectEvent, useState } from "react";
 
 type RoomState = "lobby" | "joined" | "lost";
 
-export interface Peer {
-  peerId: string;
-  userId: string;
-  presenting: boolean;
-}
-
-export interface ProducerData extends types.AppData {
-  enabled?: boolean;
-  display?: boolean;
-}
-
-export interface Producer {
-  producerId: string;
-  peerId: string;
-  streamId: string;
-  kind: types.MediaKind;
-  appData: ProducerData;
-}
-
 export interface RoomContextValue {
   roomId: string;
   socket: Socket;
   device: Device;
-  peers: Peer[];
-  producers: Producer[];
+  peers: RemotePeer[];
+  producers: RemoteProducer[];
   roomState: RoomState;
   joinRoom: () => Promise<void>;
   sendTransport?: types.Transport;
   recvTransport?: types.Transport;
+  isCurrentUserPresenting: boolean;
+  setIsCurrentUserPresenting: (value: boolean) => void;
 }
 
 const RoomContext = createContext<RoomContextValue | null>(null);
@@ -60,11 +48,22 @@ export function Room({ roomId }: { roomId: string }) {
   const [roomState, setRoomState] = useState<RoomState>("lobby");
   const [sendTransport, setSendTransport] = useState<types.Transport>();
   const [recvTransport, setRecvTransport] = useState<types.Transport>();
-  const [peers, setPeers] = useState<Peer[]>([]);
-  const [producers, setProducers] = useState<Producer[]>([]);
+  const [peers, setPeers] = useState<RemotePeer[]>([]);
+  const [producers, setProducers] = useState<RemoteProducer[]>([]);
+  const [isCurrentUserPresenting, setIsCurrentUserPresenting] = useState(false);
+
+  const handleSetIsCurrentUserPresenting = (value: boolean) => {
+    setIsCurrentUserPresenting(value);
+
+    if (value) {
+      setPeers((peers) =>
+        peers.map((peer) => ({ ...peer, presenting: false })),
+      );
+    }
+  };
 
   const joinRoom = async () => {
-    const producers = await socket.request<Producer[]>("joinRoom");
+    const producers = await socket.request<RemoteProducer[]>("joinRoom");
     setProducers((prev) =>
       uniqueMerge([...prev, ...producers], (p) => p.producerId),
     );
@@ -140,11 +139,11 @@ export function Room({ roomId }: { roomId: string }) {
 
   useEffect(() => {
     socket.on("connect", () => {
-      socket.emit("getOtherPeers", (peers: Peer[]) => {
+      socket.emit("getOtherPeers", (peers: RemotePeer[]) => {
         setPeers((prev) => uniqueMerge([...prev, ...peers], (p) => p.peerId));
       });
 
-      socket.on("newPeer", (peer: Peer) => {
+      socket.on("newPeer", (peer: RemotePeer) => {
         setPeers((peers) => uniqueMerge([...peers, peer], (p) => p.peerId));
       });
 
@@ -163,15 +162,17 @@ export function Room({ roomId }: { roomId: string }) {
             peer.peerId === data.peerId ? { ...peer, presenting: true } : peer,
           ),
         );
+        setIsCurrentUserPresenting(false);
       });
 
       socket.on("stopPresenting", () => {
         setPeers((peers) =>
           peers.map((peer) => ({ ...peer, presenting: false })),
         );
+        setIsCurrentUserPresenting(false);
       });
 
-      socket.on("newProducer", (producer: Producer) => {
+      socket.on("newProducer", (producer: RemoteProducer) => {
         setProducers((producers) =>
           uniqueMerge([...producers, producer], (p) => p.producerId),
         );
@@ -179,7 +180,7 @@ export function Room({ roomId }: { roomId: string }) {
 
       socket.on(
         "updateProducerData",
-        (data: { producerId: string; appData: ProducerData }) => {
+        (data: { producerId: string; appData: RemoteProducerData }) => {
           setProducers((producers) =>
             producers.map((producer) =>
               producer.producerId === data.producerId
@@ -226,6 +227,8 @@ export function Room({ roomId }: { roomId: string }) {
         joinRoom,
         sendTransport,
         recvTransport,
+        isCurrentUserPresenting,
+        setIsCurrentUserPresenting: handleSetIsCurrentUserPresenting,
       }}
     >
       {roomState === "lobby" && <LobbyState />}

@@ -119,12 +119,7 @@ export function useUserMedia(options: UserMediaOptions) {
       const audioTrack = mediaStreamRef.current.getAudioTracks()[0];
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
-
-        audioTrack.dispatchEvent(
-          new CustomEvent("enabledchange", {
-            detail: { enabled: audioTrack.enabled },
-          }),
-        );
+        audioTrack.dispatchEvent(new Event("enabledchange"));
 
         setState((prev) => ({
           ...prev,
@@ -144,12 +139,7 @@ export function useUserMedia(options: UserMediaOptions) {
       const videoTrack = mediaStreamRef.current.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
-
-        videoTrack.dispatchEvent(
-          new CustomEvent("enabledchange", {
-            detail: { enabled: videoTrack.enabled },
-          }),
-        );
+        videoTrack.dispatchEvent(new Event("enabledchange"));
 
         setState((prev) => ({
           ...prev,

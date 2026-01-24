@@ -5,12 +5,13 @@ export function useProduceMedia(
   mediaStream: MediaStream | null,
   display = false,
 ) {
-  const { socket, sendTransport } = useRoom();
+  const { socket, sendTransport, setIsCurrentUserPresenting } = useRoom();
 
   useEffect(() => {
     if (!mediaStream || !sendTransport) return;
 
     const controller = new AbortController();
+    const signal = controller.signal;
 
     const produce = async (track: MediaStreamTrack) => {
       if (track.readyState !== "live") return;
@@ -18,53 +19,32 @@ export function useProduceMedia(
       const producer = await sendTransport.produce({
         track,
         streamId: mediaStream.id,
-        appData: { display },
+        appData: { display, enabled: track.enabled },
       });
 
-      track.addEventListener(
-        "ended",
-        () => {
-          socket.emit("closeProducer", { producerId: producer.id });
-        },
-        { signal: controller.signal },
-      );
+      if (display) setIsCurrentUserPresenting(true);
 
-      track.addEventListener(
-        "mute",
-        () => {
-          socket.emit("updateProducerData", {
-            producerId: producer.id,
-            appData: { enabled: false },
-          });
-        },
-        { signal: controller.signal },
-      );
+      const handleCloseProducer = () => {
+        socket.emit("closeProducer", { producerId: producer.id });
+        if (display) setIsCurrentUserPresenting(false);
+      };
 
-      track.addEventListener(
-        "unmute",
-        () => {
-          socket.emit("updateProducerData", {
-            producerId: producer.id,
-            appData: { enabled: true },
-          });
-        },
-        { signal: controller.signal },
-      );
+      const handleUpdateProducer = () => {
+        setTimeout(
+          () => {
+            socket.emit("updateProducerData", {
+              producerId: producer.id,
+              appData: { enabled: track.enabled },
+            });
+          },
+          track.enabled ? 1000 : 0,
+        );
+      };
 
-      track.addEventListener(
-        "enabledchange",
-        (e) => {
-          const event = e as CustomEvent<{ enabled: boolean }>;
-
-          socket.emit("updateProducerData", {
-            producerId: producer.id,
-            appData: { enabled: event.detail.enabled },
-          });
-        },
-        {
-          signal: controller.signal,
-        },
-      );
+      track.addEventListener("ended", handleCloseProducer, { signal });
+      track.addEventListener("mute", handleUpdateProducer, { signal });
+      track.addEventListener("unmute", handleUpdateProducer, { signal });
+      track.addEventListener("enabledchange", handleUpdateProducer, { signal });
 
       return producer;
     };
@@ -86,5 +66,5 @@ export function useProduceMedia(
         });
       });
     };
-  }, [mediaStream, sendTransport, socket, display]);
+  }, [mediaStream, sendTransport, socket, display, setIsCurrentUserPresenting]);
 }

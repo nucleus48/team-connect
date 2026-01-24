@@ -1,61 +1,71 @@
 "use client";
 
 import MediaCard from "@/components/media-card";
-import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn, nameInitials } from "@/lib/utils";
 
-interface VideoTileProps {
+export interface VideoTileProps {
   id: string;
-  mediaStream: MediaStream | null;
   name: string;
   isLocal?: boolean;
-  isScreenShare?: boolean;
-  muted?: boolean;
+  display?: boolean;
   className?: string;
+  image?: string | null;
+  audioEnabled?: boolean;
+  videoEnabled?: boolean;
+  isScreenShare?: boolean;
   fit?: "cover" | "contain";
+  mediaStream?: MediaStream | null;
 }
 
 export default function VideoTile({
-  mediaStream,
   name,
-  isLocal = false,
-  isScreenShare,
-  muted,
+  image,
+  display,
   className,
+  mediaStream,
+  audioEnabled,
+  videoEnabled,
+  isScreenShare,
   fit = "cover",
+  isLocal = false,
 }: VideoTileProps) {
   return (
     <div
       className={cn(
-        "relative h-full w-full overflow-hidden rounded-xl border border-white/10 bg-zinc-900 shadow-2xl transition-all duration-300",
+        "relative h-full w-full overflow-hidden rounded-xl border border-white/10 bg-zinc-800 shadow-2xl transition-all duration-300",
         className,
       )}
     >
       <MediaCard
-        muted={isLocal || muted}
+        muted={isLocal || !audioEnabled}
         className={cn(
-          "h-full w-full transition-opacity duration-300",
-          isLocal && !isScreenShare && "scale-x-[-1]",
-          mediaStream ? "opacity-100" : "opacity-0",
+          "relative z-20 h-full w-full transition-opacity duration-300",
+          isLocal && !isScreenShare && !display && "scale-x-[-1]",
+          mediaStream && videoEnabled ? "opacity-100" : "opacity-0",
         )}
         videoClassName={cn(
           fit === "contain" ? "bg-black object-contain" : "object-cover",
         )}
-        mediaStream={mediaStream}
+        mediaStream={mediaStream ?? null}
       />
 
-      {/* Fallback / Loading State */}
-      {!mediaStream && (
-        <div className="absolute inset-0 flex items-center justify-center bg-zinc-800">
-          <div className="flex flex-col items-center gap-2">
-            <div className="h-12 w-12 animate-pulse rounded-full bg-zinc-700" />
-          </div>
-        </div>
-      )}
+      <div
+        className="absolute inset-0 z-10 bg-cover bg-center blur-[150px]"
+        style={{ backgroundImage: image ? `url(${image})` : undefined }}
+      />
+
+      <div className="absolute inset-0 z-10 flex items-center justify-center">
+        <Avatar className="scale-200">
+          <AvatarImage src={image ?? undefined} />
+          <AvatarFallback>{nameInitials(name)}</AvatarFallback>
+        </Avatar>
+      </div>
 
       {/* Name Label */}
-      <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-md bg-black/50 px-2 py-1 text-xs font-medium text-white backdrop-blur-md">
+      <div className="absolute bottom-4 left-4 z-20 flex items-center gap-2 rounded-md bg-black/50 px-2 py-1 text-xs font-medium text-white backdrop-blur-md">
         <span>{name}</span>
-        {isLocal && <span>(You)</span>}
+        <span>{isLocal && "(You)"}</span>
       </div>
 
       {/* Status Icons */}

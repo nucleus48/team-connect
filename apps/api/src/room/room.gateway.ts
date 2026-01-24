@@ -1,4 +1,3 @@
-import { ProducerData } from "@/router/room";
 import { Logger, UseFilters, UseGuards } from "@nestjs/common";
 import {
   ConnectedSocket,
@@ -8,6 +7,11 @@ import {
   SubscribeMessage,
   WebSocketGateway,
 } from "@nestjs/websockets";
+import {
+  RemotePeer,
+  RemoteProducer,
+  RemoteProducerData,
+} from "@repo/types/api/room";
 import { AuthGuard } from "@thallesp/nestjs-better-auth";
 import * as mediasoup from "mediasoup";
 import { loadEnvFile } from "process";
@@ -58,22 +62,29 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage("joinRoom")
   async joinRoom(@ConnectedSocket() client: Socket) {
-    await this.routerService.addPeerToRoom(
-      client.roomId,
-      client.id,
-      client.participant.userId,
-    );
+    const user = client.user;
+    const participant = client.participant;
+
+    if (!user) return;
+
+    const newPeer: RemotePeer = {
+      name: user.name,
+      email: user.email,
+      image: user.image,
+      peerId: client.id,
+      presenting: false,
+      role: participant.role,
+      userId: participant.userId,
+    };
+
+    await this.routerService.addPeerToRoom(client.roomId, newPeer);
 
     await client.join([
       `joined:${client.roomId}`,
       `${client.participant.role}:${client.roomId}`,
     ]);
 
-    client.to(client.roomId).emit("newPeer", {
-      peerId: client.id,
-      presenting: false,
-      userId: client.participant.userId,
-    });
+    client.to(client.roomId).emit("newPeer", newPeer);
 
     this.logger.log(`Client ${client.id} joined room ${client.roomId}`);
 
@@ -144,7 +155,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
       transportId: string;
       kind: mediasoup.types.MediaKind;
       rtpParameters: mediasoup.types.RtpParameters;
-      appData: ProducerData;
+      appData: RemoteProducerData;
     },
   ) {
     const { transportId, kind, rtpParameters, appData } = data;
@@ -158,13 +169,15 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
       appData,
     );
 
-    client.to(`joined:${client.roomId}`).emit("newProducer", {
+    const newProducer: RemoteProducer = {
       appData,
       streamId,
       peerId: client.id,
       kind: producer.kind,
       producerId: producer.id,
-    });
+    };
+
+    client.to(`joined:${client.roomId}`).emit("newProducer", newProducer);
 
     if (appData.display) {
       await this.routerService.updateRoomPresenter(
@@ -187,7 +200,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody()
     data: {
       producerId: string;
-      appData: Partial<ProducerData>;
+      appData: Partial<RemoteProducerData>;
     },
   ) {
     await this.routerService.updateProducerData(
