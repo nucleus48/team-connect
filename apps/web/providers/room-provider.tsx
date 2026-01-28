@@ -43,8 +43,8 @@ const getDevice = () => {
 };
 
 export function Room({ roomId }: { roomId: string }) {
-  const [device] = useState(getDevice);
-  const [socket] = useState(getSocket.bind(null, roomId));
+  const device = useState(getDevice)[0];
+  const socket = useState(getSocket.bind(null, roomId))[0];
   const [roomState, setRoomState] = useState<RoomState>("lobby");
   const [sendTransport, setSendTransport] = useState<types.Transport>();
   const [recvTransport, setRecvTransport] = useState<types.Transport>();

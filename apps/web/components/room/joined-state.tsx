@@ -1,15 +1,17 @@
 "use client";
 
-import { useProduceMedia } from "@/hooks/use-produce-media";
+import { useProducer } from "@/hooks/use-producer";
 import { useLocalMedia } from "@/providers/local-media-provider";
 import ControlBar from "./control-bar";
 import VideoGrid from "./video-grid";
 
 export default function JoinedState() {
-  const { userMedia, displayMedia } = useLocalMedia();
+  const { userMedia: um, displayMedia: dm } = useLocalMedia();
 
-  useProduceMedia(userMedia.mediaStream);
-  useProduceMedia(displayMedia.mediaStream, true);
+  useProducer(um.audioTrack, um.mediaStream.id);
+  useProducer(um.videoTrack, um.mediaStream.id);
+  useProducer(dm.audioTrack, dm.mediaStream?.id ?? "", true);
+  useProducer(dm.videoTrack, dm.mediaStream?.id ?? "", true);
 
   return (
     <div className="relative flex h-svh w-full flex-col bg-zinc-950">

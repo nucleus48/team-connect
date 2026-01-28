@@ -1,6 +1,6 @@
 "use client";
 
-import { useConsumeMedia } from "@/hooks/use-consume-media";
+import { useConsumer } from "@/hooks/use-consumer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
@@ -38,8 +38,8 @@ export default function VideoGrid() {
       image: data?.user.image,
       name: data?.user.name ?? "",
       mediaStream: userMedia.mediaStream,
-      audioEnabled: userMedia.audioEnabled,
-      videoEnabled: userMedia.videoEnabled,
+      audioEnabled: userMedia.isAudioEnabled,
+      videoEnabled: userMedia.isVideoEnabled,
     });
 
     if (displayMedia.mediaStream) {
@@ -95,10 +95,12 @@ export default function VideoGrid() {
   }, [
     data,
     peers,
-    userMedia,
     producers,
-    displayMedia.mediaStream,
+    userMedia.mediaStream,
     isCurrentUserPresenting,
+    userMedia.isAudioEnabled,
+    userMedia.isVideoEnabled,
+    displayMedia.mediaStream,
   ]);
 
   const presentationTile = tiles.findLast((t) => t.isScreenShare);
@@ -151,10 +153,21 @@ function StandardGridLayout({ tiles }: { tiles: TileData[] }) {
 
   if (count === 3 && tileOne && tileTwo && tileThree) {
     return (
-      <div className="flex flex-wrap content-center items-center justify-center gap-2 overflow-hidden p-2 sm:gap-4 sm:p-4">
-        <TileRenderer tile={tileOne} className="col-span-2 h-[45%] w-max" />
-        <TileRenderer tile={tileTwo} className="h-[25%] w-max sm:h-[45%]" />
-        <TileRenderer tile={tileThree} className="h-[25%] w-max sm:h-[45%]" />
+      <div className="overflow-y-auto">
+        <div className="flex h-full min-h-max flex-wrap content-center items-center gap-2 p-2 sm:gap-4 sm:p-4">
+          <TileRenderer
+            tile={tileTwo}
+            className="h-max min-h-60 min-w-48 flex-1"
+          />
+          <TileRenderer
+            tile={tileThree}
+            className="h-max min-h-60 min-w-48 flex-1"
+          />
+          <TileRenderer
+            tile={tileOne}
+            className="h-max min-h-60 min-w-48 flex-1"
+          />
+        </div>
       </div>
     );
   }
@@ -225,7 +238,15 @@ function RemoteTileWrapper({
   className?: string;
   fit?: "cover" | "contain";
 }) {
-  const mediaStream = useConsumeMedia(tile.producerIds ?? []);
+  const trackOne = useConsumer(tile.producerIds?.[0] ?? null);
+  const trackTwo = useConsumer(tile.producerIds?.[1] ?? null);
+
+  const mediaStream = useMemo(() => {
+    const stream = new MediaStream();
+    if (trackOne) stream.addTrack(trackOne);
+    if (trackTwo) stream.addTrack(trackTwo);
+    return stream;
+  }, [trackOne, trackTwo]);
 
   return (
     <VideoTile

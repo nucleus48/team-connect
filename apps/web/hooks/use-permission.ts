@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 const permissionToast: Record<
@@ -20,8 +20,16 @@ export function usePermission(name: "camera" | "microphone") {
     PermissionState | "undetermined"
   >("undetermined");
 
+  const promiseRef = useRef<Promise<unknown>>(null);
+
   const requestPermission = () => {
-    if (permission === "granted" || permission === "denied") return;
+    if (permission === "granted" || permission === "denied")
+      return Promise.resolve();
+
+    if (promiseRef.current) return promiseRef.current;
+
+    const { promise, resolve, reject } = Promise.withResolvers();
+    promiseRef.current = promise;
 
     toast(permissionToast[name].title, {
       description: permissionToast[name].description,
@@ -30,6 +38,8 @@ export function usePermission(name: "camera" | "microphone") {
         label: "Cancel",
         onClick: () => {
           toast.dismiss(name);
+          reject(new Error("Permission denied"));
+          promiseRef.current = null;
         },
       },
       action: {
@@ -49,11 +59,14 @@ export function usePermission(name: "camera" | "microphone") {
                 stream.getTracks().forEach((track) => {
                   track.stop();
                 });
-
+                resolve("Permission granted");
+                promiseRef.current = null;
                 return "Permission granted.";
               },
               error: () => {
                 setPermission("denied");
+                reject(new Error("Permission denied"));
+                promiseRef.current = null;
                 return "Permission denied.";
               },
             },
@@ -61,6 +74,8 @@ export function usePermission(name: "camera" | "microphone") {
         },
       },
     });
+
+    return promise;
   };
 
   useEffect(() => {
