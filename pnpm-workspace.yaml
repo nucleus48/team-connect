@@ -3,6 +3,9 @@ packages:
   - packages/*
 
 onlyBuiltDependencies:
+  - '@nestjs/core'
   - esbuild
+  - mediasoup
+  - msw
   - sharp
   - unrs-resolver

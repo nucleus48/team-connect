@@ -4,16 +4,16 @@
   "compilerOptions": {
     "strict": true,
     "target": "ESNext",
-    "lib": ["ESNext"],
     "module": "ESNext",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "allowJs": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "noEmit": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "noUncheckedIndexedAccess": true,
     "incremental": true
   }
 }

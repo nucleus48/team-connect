@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1767146439979,
+      "tag": "0000_unknown_sleeper",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1767200380133,
+      "tag": "0001_familiar_triathlon",
+      "breakpoints": true
+    }
+  ]
+}
