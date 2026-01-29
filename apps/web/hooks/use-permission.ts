@@ -33,11 +33,10 @@ export function usePermission(name: "camera" | "microphone") {
 
     toast(permissionToast[name].title, {
       description: permissionToast[name].description,
-      duration: 10000,
+      duration: Infinity,
       cancel: {
         label: "Cancel",
         onClick: () => {
-          toast.dismiss(name);
           reject(new Error("Permission denied"));
           promiseRef.current = null;
         },

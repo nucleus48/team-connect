@@ -8,23 +8,23 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useLocalMedia } from "@/providers/local-media-provider";
+import { useRoom } from "@/providers/room-provider";
 import { CallEnd01Icon, Share01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, IconSvgElement } from "@hugeicons/react";
-import { useRouter } from "next/navigation";
 import { CameraToggle, MicToggle, SpeakerSetting } from "./device-settings";
 
 export default function ControlBar() {
-  const router = useRouter();
+  const { leaveRoom } = useRoom();
   const { userMedia, displayMedia } = useLocalMedia();
 
   const handleLeave = () => {
     userMedia.stopUserMedia();
     displayMedia.stopDisplayMedia();
-    router.push("/");
+    leaveRoom();
   };
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center justify-center gap-4 rounded-full border border-white/10 bg-zinc-900/90 px-6 py-3 shadow-2xl backdrop-blur-xl sm:static sm:translate-x-0 sm:rounded-none">
+    <div className="flex items-center justify-center gap-4 border-t border-white/10 bg-zinc-900/90 px-6 py-3 shadow-2xl backdrop-blur-xl">
       <TooltipProvider delayDuration={0}>
         <MicToggle />
         <CameraToggle />
