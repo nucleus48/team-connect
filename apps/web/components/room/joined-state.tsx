@@ -14,7 +14,7 @@ export default function JoinedState() {
   useProducer(dm.videoTrack, dm.mediaStream?.id ?? "", true);
 
   return (
-    <div className="relative flex h-svh w-full flex-col bg-zinc-950">
+    <div className="dark relative flex h-svh w-full flex-col bg-zinc-950">
       <main className="relative grid grow overflow-hidden">
         <VideoGrid />
       </main>
