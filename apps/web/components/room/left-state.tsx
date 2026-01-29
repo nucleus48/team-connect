@@ -33,7 +33,7 @@ export default function LeftState() {
           <Button
             size="lg"
             variant="outline"
-            className="h-12 flex-1 rounded-full px-8 text-sm transition-all hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="h-12 flex-1 rounded-full px-8 text-sm transition-all"
             onClick={handleGoHome}
           >
             <HugeiconsIcon icon={Home01Icon} className="mr-2 size-4" />

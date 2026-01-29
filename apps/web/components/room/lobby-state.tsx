@@ -77,9 +77,9 @@ export default function LobbyState() {
           </div>
 
           <div className="mx-auto flex w-full max-w-xl flex-wrap justify-center gap-2">
-            <MicSelector className="h-8 w-fit min-w-[140px] rounded-full border-zinc-200 bg-transparent text-xs dark:border-zinc-800" />
-            <SpeakerSelector className="h-8 w-fit min-w-[140px] rounded-full border-zinc-200 bg-transparent text-xs dark:border-zinc-800" />
-            <CameraSelector className="h-8 w-fit min-w-[140px] rounded-full border-zinc-200 bg-transparent text-xs dark:border-zinc-800" />
+            <MicSelector className="h-8 w-fit min-w-[140px] rounded-full text-xs" />
+            <SpeakerSelector className="h-8 w-fit min-w-[140px] rounded-full text-xs" />
+            <CameraSelector className="h-8 w-fit min-w-[140px] rounded-full text-xs" />
           </div>
         </div>
 

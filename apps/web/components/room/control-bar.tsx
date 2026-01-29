@@ -24,7 +24,7 @@ export default function ControlBar() {
   };
 
   return (
-    <div className="flex items-center justify-center gap-4 border-t border-white/10 bg-zinc-900/90 px-6 py-3 shadow-2xl backdrop-blur-xl">
+    <div className="bg-background/90 flex items-center justify-center gap-4 border-t border-white/10 px-6 py-3 shadow-2xl backdrop-blur-xl">
       <TooltipProvider delayDuration={0}>
         <MicToggle />
         <CameraToggle />
