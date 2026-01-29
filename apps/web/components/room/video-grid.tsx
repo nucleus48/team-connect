@@ -214,7 +214,7 @@ function PresentationLayout({
 }) {
   return (
     <div className="flex flex-col gap-2 overflow-auto p-2 sm:gap-4 sm:p-4 lg:flex-row">
-      <div className="sticky top-0 left-0 flex-1 rounded-xl bg-zinc-900 shadow-2xl ring-2 ring-blue-500/20">
+      <div className="ring-primary/20 sticky top-0 left-0 flex-1 overflow-hidden rounded-xl bg-zinc-900 shadow-2xl ring-2">
         <TileRenderer tile={mainTile} className="border-none" fit="contain" />
       </div>
 
