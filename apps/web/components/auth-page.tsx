@@ -1,7 +1,6 @@
 "use client";
 
 import { FloatingPaths } from "@/components/floating-paths";
-import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import {
   InputGroup,
@@ -61,7 +60,6 @@ export function AuthPage() {
           </a>
         </Button>
         <div className="mx-auto space-y-4 sm:w-sm">
-          <Logo className="h-5 lg:hidden" />
           <div className="flex flex-col space-y-1">
             <h1 className="text-2xl font-bold tracking-wide">
               Sign In or Join Now!
