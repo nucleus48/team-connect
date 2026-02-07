@@ -1,14 +1,14 @@
-import { sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { pgTable, text } from "drizzle-orm/pg-core";
 import { user } from "./auth-schema";
 
-export const roomTable = sqliteTable("room", {
+export const roomTable = pgTable("room", {
   id: text("id").primaryKey(),
   status: text("status", { enum: ["active", "closed"] })
     .default("active")
     .notNull(),
 });
 
-export const roomParticipantTable = sqliteTable("room_participant", {
+export const roomParticipantTable = pgTable("room_participant", {
   id: text("id").primaryKey(),
   roomId: text("room_id")
     .references(() => roomTable.id, { onDelete: "cascade" })

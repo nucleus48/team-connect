@@ -15,7 +15,7 @@ export interface AuthOptions {
 export function getAuthInstance(opts: AuthOptions) {
   return betterAuth({
     trustedOrigins: [opts.env.SITE_URL],
-    database: drizzleAdapter(opts.db, { provider: "sqlite" }),
+    database: drizzleAdapter(opts.db, { provider: "pg" }),
     socialProviders: {
       github: {
         clientId: opts.env.GITHUB_CLIENT_ID,
