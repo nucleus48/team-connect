@@ -36,7 +36,7 @@ COPY --from=builder /app/apps/api/dist apps/api/dist
 USER node
 
 EXPOSE 3030
-EXPOSE 1000-5999/udp
-EXPOSE 1000-5999/tcp
+EXPOSE 4000-4999/udp
+EXPOSE 4000-4999/tcp
 
 CMD ["node", "apps/api/dist/main.js"]
