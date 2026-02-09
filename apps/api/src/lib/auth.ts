@@ -28,8 +28,8 @@ export function getAuthInstance(opts: AuthOptions) {
 export const auth = getAuthInstance({
   db: {},
   env: {
-    GITHUB_CLIENT_ID: "",
-    GITHUB_CLIENT_SECRET: "",
-    SITE_URL: "http://localhost:3000",
+    SITE_URL: process.env.SITE_URL,
+    GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
+    GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
   },
 });
