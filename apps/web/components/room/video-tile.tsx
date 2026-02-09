@@ -4,6 +4,7 @@ import MediaCard from "@/components/media-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn, nameInitials } from "@/lib/utils";
+import * as motion from "motion/react-client";
 
 export interface VideoTileProps {
   id: string;
@@ -20,6 +21,7 @@ export interface VideoTileProps {
 }
 
 export default function VideoTile({
+  id,
   name,
   image,
   display,
@@ -34,23 +36,23 @@ export default function VideoTile({
   const isMobile = useIsMobile();
 
   return (
-    <div
+    <motion.div
+      layout
+      layoutId={id}
       className={cn(
-        "relative h-full w-full overflow-hidden rounded-xl border border-white/10 bg-zinc-800 shadow-2xl transition-all duration-300",
+        "relative h-full w-full overflow-hidden rounded-xl border border-white/10 bg-zinc-800 shadow-2xl",
         className,
       )}
     >
       <MediaCard
         muted={isLocal || !audioEnabled}
-        className={cn(
-          "relative z-20 h-full w-full transition-opacity duration-300",
-          isLocal && !isScreenShare && !display && "scale-x-[-1]",
-          mediaStream && videoEnabled ? "opacity-100" : "opacity-0",
-        )}
-        videoClassName={cn(
-          fit === "contain" ? "bg-black object-contain" : "object-cover",
-        )}
         mediaStream={mediaStream ?? null}
+        className={cn(
+          "relative z-20 h-full w-full bg-black object-center transition-opacity duration-300",
+          mediaStream && videoEnabled ? "opacity-100" : "opacity-0",
+          isLocal && !isScreenShare && !display && "scale-x-[-1]",
+          fit === "contain" ? "object-contain" : "object-cover",
+        )}
       />
 
       {!display && (
@@ -70,7 +72,7 @@ export default function VideoTile({
 
       {/* Name Label */}
       {!isMobile && (
-        <div className="absolute bottom-4 left-4 z-20 flex max-w-[100px] items-center gap-2 rounded-md bg-black/50 px-2 py-1 text-xs font-medium text-white backdrop-blur-md sm:max-w-[200px]">
+        <div className="absolute bottom-4 left-4 z-20 flex max-w-2/3 items-center gap-2 rounded-md bg-black/50 px-2 py-1 text-xs font-medium text-white backdrop-blur-md">
           <span className="truncate">{name}</span>
           <span>{isLocal && "(You)"}</span>
         </div>
@@ -84,6 +86,6 @@ export default function VideoTile({
              We might want a visual indicator separate from the playback mute. 
          */}
       </div>
-    </div>
+    </motion.div>
   );
 }

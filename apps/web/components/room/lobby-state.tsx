@@ -20,31 +20,27 @@ import {
 } from "./device-settings";
 
 export default function LobbyState() {
-  const { peers, joinRoom } = useRoom();
-  const [isJoiningRoom, startTransition] = useTransition();
   const { userMedia } = useLocalMedia();
+  const { peers, joinRoom, isSocketConnected } = useRoom();
+  const [isJoiningRoom, startTransition] = useTransition();
 
   return (
-    <div className="bg-background flex min-h-screen flex-col items-center justify-center p-4 md:p-8">
-      {/* Header / Logo could go here */}
-
+    <div className="bg-background flex min-h-screen flex-col items-center justify-center px-4 py-8 md:p-8">
       <div className="grid w-full max-w-6xl grid-cols-1 items-center gap-8 lg:grid-cols-2">
         <div className="flex w-full flex-col gap-4">
-          <div className="group relative aspect-video overflow-hidden rounded-xl bg-zinc-900 shadow-2xl ring-1 ring-white/10">
+          <div className="relative overflow-hidden rounded-xl bg-zinc-900 shadow-2xl ring-1 ring-white/10">
             <MediaCard
               muted
               mediaStream={userMedia.mediaStream}
-              className={`h-full w-full scale-x-[-1] transform object-cover transition-opacity duration-300 ${userMedia.isVideoEnabled ? "opacity-100" : "opacity-0"}`}
+              className={`h-max min-h-[315px] w-full scale-x-[-1] transform object-cover transition-opacity duration-300 ${userMedia.isVideoEnabled ? "opacity-100" : "opacity-0"}`}
             />
 
             {!userMedia.isVideoEnabled && (
-              <div className="text-muted-foreground absolute inset-0 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="rounded-full bg-zinc-800 p-4">
-                    <HugeiconsIcon icon={CameraOff01Icon} className="size-8" />
-                  </div>
-                  <p className="text-sm font-medium">Camera is off</p>
+              <div className="text-muted-foreground absolute inset-0 flex flex-col items-center justify-center gap-2">
+                <div className="rounded-full bg-zinc-800 p-4">
+                  <HugeiconsIcon icon={CameraOff01Icon} className="size-8" />
                 </div>
+                <p className="text-sm font-medium">Camera is off</p>
               </div>
             )}
 
@@ -81,9 +77,9 @@ export default function LobbyState() {
           </div>
 
           <div className="mx-auto flex w-full max-w-xl flex-wrap justify-center gap-2">
-            <MicSelector className="h-8 w-fit min-w-[140px] rounded-full border-zinc-200 bg-transparent text-xs dark:border-zinc-800" />
-            <SpeakerSelector className="h-8 w-fit min-w-[140px] rounded-full border-zinc-200 bg-transparent text-xs dark:border-zinc-800" />
-            <CameraSelector className="h-8 w-fit min-w-[140px] rounded-full border-zinc-200 bg-transparent text-xs dark:border-zinc-800" />
+            <MicSelector className="h-8 w-fit min-w-[140px] rounded-full text-xs" />
+            <SpeakerSelector className="h-8 w-fit min-w-[140px] rounded-full text-xs" />
+            <CameraSelector className="h-8 w-fit min-w-[140px] rounded-full text-xs" />
           </div>
         </div>
 
@@ -95,7 +91,7 @@ export default function LobbyState() {
             </h1>
             <p className="text-muted-foreground">
               {peers.length
-                ? `${peers.length.toString()} peers active`
+                ? `${peers.length.toString()} peer${peers.length === 1 ? "" : "s"} active`
                 : "No one else is here"}
             </p>
           </div>
@@ -103,6 +99,7 @@ export default function LobbyState() {
           <div className="flex w-full max-w-xs flex-col gap-3">
             <Button
               size="lg"
+              disabled={!isSocketConnected}
               className="h-12 w-full rounded-full text-sm"
               onClick={() => {
                 startTransition(joinRoom);

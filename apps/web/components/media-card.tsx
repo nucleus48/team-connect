@@ -1,16 +1,13 @@
 import { cn } from "@/lib/utils";
 import { useEffect, useRef } from "react";
 
-export interface MediaCardProps extends React.ComponentProps<"div"> {
-  muted?: boolean;
+export interface MediaCardProps extends React.ComponentProps<"video"> {
   mediaStream: MediaStream | null;
-  videoClassName?: string;
 }
 
 export default function MediaCard({
-  muted,
   mediaStream,
-  videoClassName,
+  className,
   ...props
 }: MediaCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -22,14 +19,12 @@ export default function MediaCard({
   }, [mediaStream]);
 
   return (
-    <div {...props}>
-      <video
-        autoPlay
-        playsInline
-        muted={muted}
-        ref={videoRef}
-        className={cn("h-full w-full", videoClassName)}
-      />
-    </div>
+    <video
+      autoPlay
+      playsInline
+      ref={videoRef}
+      className={cn("h-full w-full", className)}
+      {...props}
+    />
   );
 }

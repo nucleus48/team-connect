@@ -3,6 +3,8 @@ import * as mediasoup from "mediasoup";
 export const config = {
   // mediasoup Worker settings
   worker: {
+    rtcMinPort: parseInt(process.env.RTC_MIN_PORT),
+    rtcMaxPort: parseInt(process.env.RTC_MAX_PORT),
     logLevel: "warn" as mediasoup.types.WorkerLogLevel,
     logTags: [
       "info",
@@ -73,7 +75,7 @@ export const config = {
     listenIps: [
       {
         ip: "0.0.0.0", // TODO: Replace with actual public IP
-        announcedIp: process.env.ANNOUNCED_IP ?? "127.0.0.1",
+        announcedIp: process.env.ANNOUNCED_IP,
       },
     ],
     initialAvailableOutgoingBitrate: 1000000,
@@ -88,7 +90,7 @@ export const config = {
   plainTransport: {
     listenIp: {
       ip: "0.0.0.0", // TODO: Replace with actual public IP
-      announcedIp: process.env.ANNOUNCED_IP ?? "127.0.0.1",
+      announcedIp: process.env.ANNOUNCED_IP,
     },
     rtcpMux: true,
     comedia: false,

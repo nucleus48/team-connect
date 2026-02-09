@@ -10,5 +10,8 @@
     "className",
     "containerClassName",
     "contentContainerClassName"
-  ]
+  ],
+  "[dockerfile]": {
+    "editor.defaultFormatter": "ms-azuretools.vscode-containers"
+  }
 }

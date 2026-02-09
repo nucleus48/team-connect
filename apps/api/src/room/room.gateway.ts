@@ -14,13 +14,10 @@ import {
 } from "@repo/types/api/room";
 import { AuthGuard } from "@thallesp/nestjs-better-auth";
 import * as mediasoup from "mediasoup";
-import { loadEnvFile } from "process";
 import { Socket } from "socket.io";
 import { RouterService } from "../router/router.service";
 import { WsExceptionFilter } from "../ws-exception.filter";
 import { RoomGuard } from "./room.guard";
-
-loadEnvFile();
 
 @UseFilters(new WsExceptionFilter())
 @WebSocketGateway({

@@ -15,7 +15,7 @@ export interface AuthOptions {
 export function getAuthInstance(opts: AuthOptions) {
   return betterAuth({
     trustedOrigins: [opts.env.SITE_URL],
-    database: drizzleAdapter(opts.db, { provider: "sqlite" }),
+    database: drizzleAdapter(opts.db, { provider: "pg" }),
     socialProviders: {
       github: {
         clientId: opts.env.GITHUB_CLIENT_ID,
@@ -28,8 +28,8 @@ export function getAuthInstance(opts: AuthOptions) {
 export const auth = getAuthInstance({
   db: {},
   env: {
-    GITHUB_CLIENT_ID: "",
-    GITHUB_CLIENT_SECRET: "",
-    SITE_URL: "http://localhost:3000",
+    SITE_URL: process.env.SITE_URL,
+    GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
+    GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
   },
 });

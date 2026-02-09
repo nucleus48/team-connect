@@ -119,7 +119,7 @@ export function MicToggle({ className }: { className?: string }) {
 
   return (
     <TooltipProvider delayDuration={0}>
-      <div className="flex items-center">
+      <div className="flex items-center rounded-full shadow-lg">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -127,7 +127,7 @@ export function MicToggle({ className }: { className?: string }) {
               onClick={() => void userMedia.toggleAudioEnabled()}
               variant={!userMedia.isAudioEnabled ? "destructive" : "secondary"}
               className={cn(
-                "size-12 rounded-full sm:rounded-l-full sm:rounded-r-none sm:border-r sm:border-white/10",
+                "size-12 rounded-full sm:rounded-l-full sm:rounded-r-none sm:border-r",
                 className,
               )}
             >
@@ -185,14 +185,14 @@ export function CameraToggle({ className }: { className?: string }) {
 
   return (
     <TooltipProvider delayDuration={0}>
-      <div className="flex items-center">
+      <div className="flex items-center rounded-full shadow-lg">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant={!userMedia.isVideoEnabled ? "destructive" : "secondary"}
               size="icon"
               className={cn(
-                "size-12 rounded-full sm:rounded-l-full sm:rounded-r-none sm:border-r sm:border-white/10",
+                "size-12 rounded-full sm:rounded-l-full sm:rounded-r-none sm:border-r",
                 className,
               )}
               onClick={() => void userMedia.toggleVideoEnabled()}

@@ -49,8 +49,9 @@ export default function VideoGrid() {
         id: "local-screen",
         videoEnabled: true,
         image: data?.user.image,
-        isScreenShare: isCurrentUserPresenting,
         mediaStream: displayMedia.mediaStream,
+        isScreenShare: isCurrentUserPresenting,
+        audioEnabled: displayMedia.isAudioEnabled,
         name: data?.user.name ? `${data.user.name}'s Screen` : "",
       });
     }
@@ -73,11 +74,11 @@ export default function VideoGrid() {
         ),
       });
 
-      const [screenProducer] = peerProducers.filter(
-        (p) => p.appData.display && p.kind === "video",
-      );
+      const screenProducers = peerProducers.filter((p) => p.appData.display);
 
-      if (screenProducer) {
+      if (
+        screenProducers.some((p) => p.kind === "video" && p.appData.enabled)
+      ) {
         allTiles.push({
           display: true,
           isLocal: false,
@@ -85,8 +86,13 @@ export default function VideoGrid() {
           name: `${peer.name}'s Screen`,
           isScreenShare: peer.presenting,
           id: `remote-screen-${peer.peerId}`,
-          producerIds: [screenProducer.producerId],
-          videoEnabled: screenProducer.appData.enabled,
+          producerIds: screenProducers.map((p) => p.producerId),
+          audioEnabled: screenProducers.some(
+            (p) => p.kind === "audio" && p.appData.enabled,
+          ),
+          videoEnabled: screenProducers.some(
+            (p) => p.kind === "video" && p.appData.enabled,
+          ),
         });
       }
     });
@@ -101,6 +107,7 @@ export default function VideoGrid() {
     userMedia.isAudioEnabled,
     userMedia.isVideoEnabled,
     displayMedia.mediaStream,
+    displayMedia.isAudioEnabled,
   ]);
 
   const presentationTile = tiles.findLast((t) => t.isScreenShare);
@@ -121,16 +128,20 @@ function StandardGridLayout({ tiles }: { tiles: TileData[] }) {
   const isMobile = useIsMobile();
 
   const count = tiles.length;
-  const [tileOne, tileTwo, tileThree] = tiles;
+  const [tileOne, tileTwo] = tiles;
 
   if (count === 1 && tileOne) {
     return (
       <div className="overflow-hidden sm:p-4">
-        <TileRenderer
-          tile={tileOne}
-          className={cn(isMobile && "rounded-none border-0")}
-          fit={isMobile ? "cover" : "contain"}
-        />
+        <div className="hidden" />
+        <div className="h-full w-full">
+          <TileRenderer
+            key={tileOne.id}
+            tile={tileOne}
+            fit={isMobile ? "cover" : "contain"}
+            className={cn(isMobile && "rounded-none border-0")}
+          />
+        </div>
       </div>
     );
   }
@@ -138,51 +149,58 @@ function StandardGridLayout({ tiles }: { tiles: TileData[] }) {
   if (count === 2 && tileOne && tileTwo) {
     return (
       <div className="overflow-hidden sm:p-4">
-        <TileRenderer
-          tile={tileTwo}
-          className={cn(isMobile && "rounded-none border-0")}
-          fit={isMobile ? "cover" : "contain"}
-        />
-        <TileRenderer
-          tile={tileOne}
-          className="absolute right-4 bottom-4 z-30 h-32 w-max sm:h-40"
-        />
-      </div>
-    );
-  }
-
-  if (count === 3 && tileOne && tileTwo && tileThree) {
-    return (
-      <div className="overflow-y-auto">
-        <div className="flex h-full min-h-max flex-wrap content-center items-center gap-2 p-2 sm:gap-4 sm:p-4">
+        <div className="hidden" />
+        <div className="h-full w-full">
           <TileRenderer
-            tile={tileTwo}
-            className="h-max min-h-60 min-w-48 flex-1"
-          />
-          <TileRenderer
-            tile={tileThree}
-            className="h-max min-h-60 min-w-48 flex-1"
-          />
-          <TileRenderer
+            key={tileOne.id}
             tile={tileOne}
-            className="h-max min-h-60 min-w-48 flex-1"
+            className="absolute right-4 bottom-4 z-30 h-auto max-h-40 w-auto max-w-40"
+          />
+          <TileRenderer
+            key={tileTwo.id}
+            tile={tileTwo}
+            className={cn(isMobile && "rounded-none border-0")}
+            fit={isMobile ? "cover" : "contain"}
           />
         </div>
       </div>
     );
   }
 
+  if (count === 3) {
+    return (
+      <div className="overflow-y-auto">
+        <div className="hidden" />
+        <div className="flex h-full min-h-max w-full flex-wrap content-center items-center justify-center gap-2 p-2 sm:gap-4 sm:p-4">
+          {tiles.map((tile, i) => (
+            <TileRenderer
+              key={tile.id}
+              tile={tile}
+              className={cn(
+                "h-2/5 w-max min-w-1/3 flex-1 sm:min-w-auto sm:flex-none",
+                i === 0 && "min-w-full",
+              )}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={cn(
-        "grid auto-rows-[minmax(40%,1fr)] grid-cols-2 gap-2 overflow-y-auto p-2 sm:gap-4 sm:p-4",
-        tiles.length > 4 && "lg:grid-cols-3",
-        tiles.length > 6 && "xl:grid-cols-4",
-      )}
-    >
-      {tiles.map((tile) => (
-        <TileRenderer key={tile.id} tile={tile} />
-      ))}
+    <div className="overflow-y-auto">
+      <div className="hidden" />
+      <div
+        className={cn(
+          "grid auto-rows-[minmax(40%,1fr)] grid-cols-2 gap-2 overflow-y-auto p-2 sm:gap-4 sm:p-4",
+          tiles.length > 4 && "lg:grid-cols-3",
+          tiles.length > 6 && "xl:grid-cols-4",
+        )}
+      >
+        {tiles.map((tile) => (
+          <TileRenderer key={tile.id} tile={tile} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -195,17 +213,18 @@ function PresentationLayout({
   sidebarTiles: TileData[];
 }) {
   return (
-    <div className="flex flex-col gap-2 overflow-hidden p-2 sm:gap-4 sm:p-4 lg:flex-row">
-      <div className="grid grow rounded-xl bg-zinc-900 shadow-2xl ring-2 ring-blue-500/20">
+    <div className="flex flex-col gap-2 overflow-auto p-2 sm:gap-4 sm:p-4 lg:flex-row">
+      <div className="ring-primary/20 sticky top-0 left-0 flex-1 overflow-hidden rounded-xl bg-zinc-900 shadow-2xl ring-2">
         <TileRenderer tile={mainTile} className="border-none" fit="contain" />
       </div>
 
-      <div className="flex h-32 w-full gap-2 overflow-x-auto sm:gap-4 lg:h-full lg:w-80 lg:flex-col lg:overflow-x-hidden">
+      <div className="flex h-max w-max gap-2 sm:gap-4 lg:flex-col">
         {sidebarTiles.map((tile) => (
           <TileRenderer
             tile={tile}
             key={tile.id}
-            className="h-full min-h-32 w-auto min-w-48 lg:h-auto lg:w-full"
+            fit="contain"
+            className="aspect-video h-40 w-auto lg:h-auto lg:w-64"
           />
         ))}
       </div>

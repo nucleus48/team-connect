@@ -133,9 +133,9 @@ export function useUserMedia(options: UserMediaOptions) {
         video: options.videoDeviceId
           ? {
               deviceId: { exact: options.videoDeviceId },
-              aspectRatio: { ideal: isMobile ? 1 : 16 / 9 },
+              aspectRatio: { ideal: isMobile ? 9 / 16 : 16 / 9 },
             }
-          : { aspectRatio: { ideal: isMobile ? 1 : 16 / 9 } },
+          : { aspectRatio: { ideal: isMobile ? 9 / 16 : 16 / 9 } },
       }),
     );
 
@@ -217,7 +217,7 @@ export function useUserMedia(options: UserMediaOptions) {
     void tryCatch(
       videoTrack.applyConstraints({
         deviceId: { exact: options.videoDeviceId },
-        aspectRatio: isMobile ? 1 : 16 / 9,
+        aspectRatio: isMobile ? 9 / 16 : 16 / 9,
       }),
     );
   }, [options.videoDeviceId, isMobile, videoTrack]);

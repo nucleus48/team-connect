@@ -1,6 +1,7 @@
 "use client";
 
 import JoinedState from "@/components/room/joined-state";
+import LeftState from "@/components/room/left-state";
 import LobbyState from "@/components/room/lobby-state";
 import { io, Socket } from "@/lib/socket";
 import {
@@ -11,7 +12,7 @@ import {
 import { Device, types } from "mediasoup-client";
 import { createContext, use, useEffect, useEffectEvent, useState } from "react";
 
-type RoomState = "lobby" | "joined" | "lost";
+type RoomState = "lobby" | "joined" | "lost" | "left";
 
 export interface RoomContextValue {
   roomId: string;
@@ -21,8 +22,10 @@ export interface RoomContextValue {
   producers: RemoteProducer[];
   roomState: RoomState;
   joinRoom: () => Promise<void>;
+  leaveRoom: () => void;
   sendTransport?: types.Transport;
   recvTransport?: types.Transport;
+  isSocketConnected: boolean;
   isCurrentUserPresenting: boolean;
   setIsCurrentUserPresenting: (value: boolean) => void;
 }
@@ -50,7 +53,9 @@ export function Room({ roomId }: { roomId: string }) {
   const [recvTransport, setRecvTransport] = useState<types.Transport>();
   const [peers, setPeers] = useState<RemotePeer[]>([]);
   const [producers, setProducers] = useState<RemoteProducer[]>([]);
+
   const [isCurrentUserPresenting, setIsCurrentUserPresenting] = useState(false);
+  const [isSocketConnected, setIsSocketConnected] = useState(false);
 
   const handleSetIsCurrentUserPresenting = (value: boolean) => {
     setIsCurrentUserPresenting(value);
@@ -68,6 +73,11 @@ export function Room({ roomId }: { roomId: string }) {
       uniqueMerge([...prev, ...producers], (p) => p.producerId),
     );
     setRoomState("joined");
+  };
+
+  const leaveRoom = () => {
+    socket.disconnect();
+    setRoomState("left");
   };
 
   const loadDevice = async () => {
@@ -139,8 +149,15 @@ export function Room({ roomId }: { roomId: string }) {
 
   useEffect(() => {
     socket.on("connect", () => {
+      setIsSocketConnected(true);
+
       socket.emit("getOtherPeers", (peers: RemotePeer[]) => {
         setPeers((prev) => uniqueMerge([...prev, ...peers], (p) => p.peerId));
+      });
+
+      socket.on("disconnect", (reason) => {
+        if (reason === "io client disconnect") return;
+        setRoomState("left");
       });
 
       socket.on("newPeer", (peer: RemotePeer) => {
@@ -207,6 +224,7 @@ export function Room({ roomId }: { roomId: string }) {
 
     return () => {
       socket.disconnect();
+      setIsSocketConnected(false);
     };
   }, [socket]);
 
@@ -225,14 +243,17 @@ export function Room({ roomId }: { roomId: string }) {
         producers,
         roomState,
         joinRoom,
+        leaveRoom,
         sendTransport,
         recvTransport,
+        isSocketConnected,
         isCurrentUserPresenting,
         setIsCurrentUserPresenting: handleSetIsCurrentUserPresenting,
       }}
     >
       {roomState === "lobby" && <LobbyState />}
       {roomState === "joined" && <JoinedState />}
+      {roomState === "left" && <LeftState />}
     </RoomContext>
   );
 }

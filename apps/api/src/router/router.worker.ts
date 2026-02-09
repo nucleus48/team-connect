@@ -13,8 +13,10 @@ export class RouterWorker implements OnModuleInit {
 
     for (let i = 0; i < cpus; i++) {
       const worker = await mediasoup.createWorker({
-        logLevel: config.worker.logLevel,
         logTags: config.worker.logTags,
+        logLevel: config.worker.logLevel,
+        rtcMinPort: config.worker.rtcMinPort,
+        rtcMaxPort: config.worker.rtcMaxPort,
       });
 
       this.workers.push(worker);

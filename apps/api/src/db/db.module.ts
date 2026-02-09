@@ -8,7 +8,7 @@ import { DB_INSTANCE, getDbInstance } from "./db";
       provide: DB_INSTANCE,
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        return getDbInstance(configService.getOrThrow("DB_FILE_NAME"));
+        return getDbInstance(configService.getOrThrow("DATABASE_URL"));
       },
     },
   ],
