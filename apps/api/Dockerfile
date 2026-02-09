@@ -28,7 +28,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 COPY --from=prepare /app/out/full .
 RUN pnpm build
 
-FROM node:${NODE_VERSION}-bookworm-slim AS runner
+FROM node:${NODE_VERSION}-alpine AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=prod-deps /app .
