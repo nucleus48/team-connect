@@ -1,5 +1,3 @@
-import "dotenv/config";
-
 import { Logger, UseFilters, UseGuards } from "@nestjs/common";
 import {
   ConnectedSocket,
