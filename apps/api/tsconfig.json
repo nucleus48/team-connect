@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.base",
+  "extends": "@repo/tsconfig/base",
   "compilerOptions": {
     "module": "nodenext",
     "moduleResolution": "nodenext",

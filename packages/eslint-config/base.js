@@ -6,7 +6,11 @@ import tseslint from "typescript-eslint";
 
 export default defineConfig(
   gitignore({ cwd: process.cwd() }),
-  globalIgnores(["eslint.config.mjs", "postcss.config.mjs"]),
+  globalIgnores([
+    "eslint.config.mjs",
+    "postcss.config.mjs",
+    "prettier.config.mjs",
+  ]),
   eslint.configs.recommended,
   tseslint.configs.strictTypeChecked,
   tseslint.configs.stylisticTypeChecked,

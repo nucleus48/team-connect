@@ -26,6 +26,8 @@ COPY --from=prepare /app/out/json .
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
   pnpm install --frozen-lockfile
 COPY --from=prepare /app/out/full .
+RUN pnpm check-types
+RUN pnpm lint
 RUN pnpm build
 
 FROM node:${NODE_VERSION}-bookworm-slim AS runner
