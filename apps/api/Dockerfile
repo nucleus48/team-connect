@@ -3,23 +3,16 @@ ARG TURBO_VERSION=2.7.2
 ARG PNPM_VERSION=10.26.2
 
 FROM node:${NODE_VERSION}-bookworm AS base
-ENV NODE_ENV=production
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
-RUN corepack enable \
-  && corepack prepare pnpm@${PNPM_VERSION} --activate
+RUN corepack enable
+RUN corepack prepare pnpm@${PNPM_VERSION} --activate
 WORKDIR /app
 
 FROM base AS prepare
 COPY . .
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
   pnpm dlx turbo@${TURBO_VERSION} prune api --docker
-
-FROM base AS prod-deps
-COPY --from=prepare /app/out/json .
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-  pnpm install --prod --frozen-lockfile
-COPY --from=prepare /app/out/full .
 
 FROM base AS builder
 COPY --from=prepare /app/out/json .
@@ -30,15 +23,25 @@ RUN pnpm check-types
 RUN pnpm lint
 RUN pnpm build
 
+FROM base AS runner-deps
+COPY --from=prepare /app/out/json .
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+  pnpm install --prod --frozen-lockfile
+COPY --from=prepare /app/out/full .
+
 FROM node:${NODE_VERSION}-bookworm-slim AS runner
-ENV NODE_ENV=production
 WORKDIR /app
-COPY --from=prod-deps /app .
+COPY --from=runner-deps /app .
 COPY --from=builder /app/apps/api/dist apps/api/dist
 USER node
 
-EXPOSE 3030
-EXPOSE 4000-4999/udp
-EXPOSE 4000-4999/tcp
+ENV PORT=3030
+ENV RTC_MIN_PORT=4000
+ENV RTC_MAX_PORT=4999
+ENV NODE_ENV=production
+
+EXPOSE ${PORT}
+EXPOSE ${RTC_MIN_PORT}-${RTC_MAX_PORT}/udp
+EXPOSE ${RTC_MIN_PORT}-${RTC_MAX_PORT}/tcp
 
 CMD ["node", "apps/api/dist/main.js"]

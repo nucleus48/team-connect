@@ -6,6 +6,7 @@
     "node_modules",
     "**/*spec.ts",
     "drizzle.config.ts",
-    "eslint.config.mjs"
+    "eslint.config.mjs",
+    "prettier.config.mjs"
   ]
 }
