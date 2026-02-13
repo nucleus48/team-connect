@@ -9,6 +9,7 @@
     "./nest": "./nest.js",
     "./expo": "./expo.js",
     "./convex": "./convex.js",
+    "./prettier": "./prettier.js",
     "./react-internal": "./react-internal.js"
   },
   "devDependencies": {
@@ -23,6 +24,6 @@
     "eslint-plugin-react-compiler": "19.1.0-rc.2",
     "eslint-plugin-react-hooks": "^7.0.1",
     "globals": "^17.3.0",
-    "typescript-eslint": "^8.54.0"
+    "typescript-eslint": "^8.55.0"
   }
 }

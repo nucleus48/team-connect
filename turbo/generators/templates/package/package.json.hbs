@@ -1,8 +1,11 @@
 {
-  "name": "@repo/types",
+  "name": "@repo/{{name}}",
   "version": "0.0.0",
   "private": true,
+  "main": "index.ts",
   "scripts": {
+    "dev": "Script for persistent dev server",
+    "build": "Script for building the package",
     "lint": "eslint . --fix",
     "check-types": "tsc --noEmit",
     "clean": "rm -fr node_modules"
